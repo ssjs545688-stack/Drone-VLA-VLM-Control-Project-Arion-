@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             "llm_service = llm_to_px4.llm_service:main",
             "llm_to_px4_converter = llm_to_px4.llm_to_px4_converter:main",
+            "llm_px4_controller = llm_to_px4.llm_px4_controller:main",
         ],
     },
 )
