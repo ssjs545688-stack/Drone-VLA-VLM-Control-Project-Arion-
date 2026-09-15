@@ -1,0 +1,7 @@
+# LLM Node 실행
+source install/setup.bash
+ros2 run sample_call sample_call
+
+# request [new terminal]
+source install/setup.bash
+ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: 'ROS 2가 무엇인지 간단하게 설명해줘'}"
