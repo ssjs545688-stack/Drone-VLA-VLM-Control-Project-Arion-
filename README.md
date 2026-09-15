@@ -16,5 +16,6 @@ arion_project(VLA)
 | **[feature]** | 새로운 기능 추가 또는 알고리즘 수정 |
 | **[bugfix]** | 버그 수정 |
 | **[ignore]** | 주석 추가, 코드 정리 등 알고리즘에 영향을 주지 않는 변경 |
+| **[test]** | 주 코드에 영향을 주지 않는 테스트용 참고 파일 |
 
 <img src="images/molu.png" width="200"> 
