@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from pathlib import Path
 import torch,rclpy  # PyTorch와 ROS 2 Python 라이브러리
 from rclpy.node import Node # ROS 2 Node 클래스 가져오기
 from transformers import AutoTokenizer,AutoModelForCausalLM # 토크나이저와 언어 모델 클래스
@@ -7,7 +8,7 @@ from guide_interfaces.srv import GuideLLM   # ROS 2 Service 인터페이스 가�
 class LLMService(Node):
     def __init__(self):
         super().__init__("llm_service")
-        model_path="/home/hkit/workspace/Guide/models/Qwen3-0.6B"
+        model_path=Path.home()/"Drone-VLA-VLM-Control-Project-Arion-"/"models"/"Qwen3-0.6B"
 
         # Qwen3 토크나이저 & llm 모델 로드
         self.tokenizer=AutoTokenizer.from_pretrained(model_path,local_files_only=True)
