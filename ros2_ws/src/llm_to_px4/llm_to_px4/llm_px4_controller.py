@@ -38,8 +38,8 @@ class LLMToPX4Controller(Node):
 
         self.llm_sub=self.create_subscription(
             String,
-            "/llm_response",
-            self.llm_callback,
+            "/px4_command",
+            self.command_callback,
             10
         )
 
@@ -81,9 +81,9 @@ class LLMToPX4Controller(Node):
     # LLM command
     # --------------------------------------------------
 
-    def llm_callback(self,msg):
+    def command_callback(self,msg):
         command=msg.data.strip()
-        self.get_logger().info(f"LLM command: {command}")
+        self.get_logger().info(f"Validated command: {command}")
         self.process_command(command)
 
     def process_command(self,command):
@@ -134,7 +134,7 @@ class LLMToPX4Controller(Node):
         self.target_y=self.current_y
 
         # PX4 local position은 NED이므로 상승은 음수
-        self.target_z=-abs(altitude)
+        self.target_z=self.current_z-abs(altitude)
 
         self.target_yaw=self.current_yaw
 
