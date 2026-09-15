@@ -1,0 +1,21 @@
+# 라이브러리 설치
+python3 -m pip install --user \
+  "numpy==1.24.4" \
+  "scipy==1.10.1" \
+  "torch==2.1.2" \
+  "transformers==4.51.3" \
+  "accelerate>=0.34.2"
+
+# 빌드
+cd ros2_ws/
+colcon build --packages-select guide_interfaces sample_call
+
+# LLM Node 실행
+cd ros2_ws/
+source install/setup.bash
+ros2 run sample_call sample_call
+
+# request [new terminal]
+cd ros2_ws/
+source install/setup.bash
+ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: 'ROS 2가 무엇인지 간단하게 설명해줘'}"
