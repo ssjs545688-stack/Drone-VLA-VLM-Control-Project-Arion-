@@ -1,0 +1,25 @@
+#. px4 msgs 불일치 수정해서 다시 build
+1. cd ros_ws
+2. colcon build
+
+
+#. 터미널1(QGC 실행: QGC 이미지 파일 실행 경로에서...)
+QGroundControl-x86_64.AppImage
+
+
+#. 터미널2(MicroXRCEAgent 실행: MicroXRCEAgent 설치되었으면 경로 상관 없음...)
+MicroXRCEAgent udp4 -p 8888
+
+
+#. 터미널3(PX4-Autopilot 실행 in 가제보 환경: PX4-Autopilot 경로에서...)
+cd PX4-Autopilot
+PX4_SYS_AUTOSTART=4010 PX4_SIM_MODEL=gz_x500_mono_cam PX4_GZ_MODEL_POSE="1,1,0.1,0,0,0.9" PX4_GZ_WORLD=test_world build/px4_sitl_default/bin/px4
+
+
+#. 터미널4(프로젝트 루트 경로에서...: 이륙하라는 프롬프트 임의로 모델에 넣어서 결과값으로 드론 이륙 테스트)
+source /opt/ros/humble/setup.bash
+source ./ros2_ws/install/setup.bash
+python3 ./test/test_flight_control.py
+
+
+##. 결과: 프롬프트 문장이 모델을 통해 결과가 나오면 가제보 드론이 작동하고 약 2m 까지 올라감...(QGC로 높이 확인)
