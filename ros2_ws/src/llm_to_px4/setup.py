@@ -24,7 +24,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            "llm_to_px4 = llm_to_px4.llm_service:main",
+            "llm_service = llm_to_px4.llm_service:main",
+            "llm_to_px4_converter = llm_to_px4.llm_to_px4_converter:main",
         ],
     },
 )

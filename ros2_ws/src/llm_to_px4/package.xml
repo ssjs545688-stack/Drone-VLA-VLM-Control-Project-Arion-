@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>sample_call</name>
+  <name>llm_to_px4</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>LLM response to PX4 message converter package</description>
   <maintainer email="274044817+crab-ally@users.noreply.github.com">hkit</maintainer>
   <license>TODO: License declaration</license>
 
@@ -11,7 +11,10 @@
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
   <depend>guide_interfaces</depend>
+  <depend>px4_msgs</depend>
 
 
   <export>
