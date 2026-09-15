@@ -71,7 +71,9 @@ class LLMService(Node):
             outputs = self.model.generate(inputs, max_new_tokens=256, do_sample=False)
 
         # 생성된 토큰을 문자열로 디코딩
-        decoded_output = self.tokenizer.decode(outputs[0][inputs.shape[-1]:], skip_special_tokens=True).strip()
+        decoded_output=self.tokenizer.decode(outputs[0][inputs.shape[-1]:],skip_special_tokens=True).strip()
+        if "</think>" in decoded_output:
+            decoded_output=decoded_output.split("</think>",1)[1].strip()
         return decoded_output
 
     def callback(self, request, response):
