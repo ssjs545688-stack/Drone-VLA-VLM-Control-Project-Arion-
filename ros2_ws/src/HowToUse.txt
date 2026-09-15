@@ -8,14 +8,31 @@ python3 -m pip install --user \
 
 # 빌드
 cd ros2_ws/
-colcon build --packages-select guide_interfaces sample_call
+colcon build --packages-select guide_interfaces px4_msgs llm_to_px4
 
-# LLM Node 실행
+# 1. LLM Node 실행 (Terminal 1)
 cd ros2_ws/
 source install/setup.bash
-ros2 run sample_call sample_call
+ros2 run llm_to_px4 llm_service
 
-# request [new terminal]
+# 2. LLM to PX4 Converter Node 실행 (Terminal 2)
 cd ros2_ws/
 source install/setup.bash
-ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: 'ROS 2가 무엇인지 간단하게 설명해줘'}"
+ros2 run llm_to_px4 llm_to_px4_converter
+
+# 3. 명령 전송 방법 (Terminal 3)
+cd ros2_ws/
+source install/setup.bash
+
+# 방법 A: LLM Service 호출 (/llm) -> 자동으로 /llm_response 토픽 발행 및 PX4 메시지 변환
+ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '드론을 5m로 이륙시켜'}"
+ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '앞으로 2m 이동하고 위로 1m 올라가'}"
+ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '이제 착륙해'}"
+
+# 방법 B: Converter Node에 직접 통합 명령 호출 (/execute_llm_command)
+ros2 service call /execute_llm_command guide_interfaces/srv/GuideLLM "{prompt: '오른쪽으로 3m 이동해'}"
+
+# 방법 C: 직접 LLM 명령 토픽으로 발행 (/llm_response)
+ros2 topic pub --once /llm_response std_msgs/msg/String "{data: 'TAKEOFF 5'}"
+ros2 topic pub --once /llm_response std_msgs/msg/String "{data: 'MOVE 2 0 1'}"
+ros2 topic pub --once /llm_response std_msgs/msg/String "{data: 'LAND'}"
