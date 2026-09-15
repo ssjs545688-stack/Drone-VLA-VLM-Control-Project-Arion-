@@ -6,33 +6,51 @@ python3 -m pip install --user \
   "transformers==4.51.3" \
   "accelerate>=0.34.2"
 
+# PX4 SITL과 ROS 2 사이의 통신 중계 서버 (Terminal 1)
+MicroXRCEAgent udp4 -p 8888
+
+# PX4 시뮬레이션 실행 (Terminal 2)
+PX4_SYS_AUTOSTART=4010 \
+PX4_SIM_MODEL=gz_x500_mono_cam \
+PX4_GZ_MODEL_POSE="1,1,0.1,0,0,0.9" \
+PX4_GZ_WORLD=test_world \
+~/PX4-Autopilot/build/px4_sitl_default/bin/px4
+
 # 빌드
-cd ros2_ws/
+cd ~/Drone-VLA-VLM-Control-Project-Arion-/ros2_ws
 colcon build --packages-select guide_interfaces px4_msgs llm_to_px4
 
-# 1. LLM Node 실행 (Terminal 1)
-cd ros2_ws/
+# ============================================================
+# 1. LLM Node 실행 (Terminal 3)
+# ============================================================
+cd ~/Drone-VLA-VLM-Control-Project-Arion-/ros2_ws
 source install/setup.bash
 ros2 run llm_to_px4 llm_service
 
-# 2. LLM to PX4 Converter Node 실행 (Terminal 2)
-cd ros2_ws/
+# ============================================================
+# 2. LLM to PX4 Converter Node 실행 (Terminal 4)
+# ============================================================
+cd ~/Drone-VLA-VLM-Control-Project-Arion-/ros2_ws
 source install/setup.bash
 ros2 run llm_to_px4 llm_to_px4_converter
 
-# 3. 명령 전송 방법 (Terminal 3)
-cd ros2_ws/
+
+# ============================================================
+# 3. llm_to_px4_controller Node 실행 (Terminal 5)
+# ============================================================
+cd ~/Drone-VLA-VLM-Control-Project-Arion-/ros2_ws
+source install/setup.bash
+ros2 run llm_to_px4 llm_px4_controller
+
+# 명령 전송 방법 (Terminal 6)
+cd ~/Drone-VLA-VLM-Control-Project-Arion-/ros2_ws
 source install/setup.bash
 
-# 방법 A: LLM Service 호출 (/llm) -> 자동으로 /llm_response 토픽 발행 및 PX4 메시지 변환
+# LLM Service 호출 (/llm) -> 자동으로 /llm_response 토픽 발행 및 PX4 메시지 변환
 ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '드론을 5m로 이륙시켜'}"
+ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '앞으로 2m 이동해'}"
+ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '오른쪽으로 3m 이동해'}"
 ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '앞으로 2m 이동하고 위로 1m 올라가'}"
+ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '뒤로 2m, 왼쪽으로 1m, 아래로 0.5m 이동해'}"
+ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '현재 위치에서 호버링해'}"
 ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '이제 착륙해'}"
-
-# 방법 B: Converter Node에 직접 통합 명령 호출 (/execute_llm_command)
-ros2 service call /execute_llm_command guide_interfaces/srv/GuideLLM "{prompt: '오른쪽으로 3m 이동해'}"
-
-# 방법 C: 직접 LLM 명령 토픽으로 발행 (/llm_response)
-ros2 topic pub --once /llm_response std_msgs/msg/String "{data: 'TAKEOFF 5'}"
-ros2 topic pub --once /llm_response std_msgs/msg/String "{data: 'MOVE 2 0 1'}"
-ros2 topic pub --once /llm_response std_msgs/msg/String "{data: 'LAND'}"
