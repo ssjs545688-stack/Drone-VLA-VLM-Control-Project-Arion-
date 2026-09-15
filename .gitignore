@@ -1,0 +1,9 @@
+#. Visual Studio cache
+.vs/
+.vscode/
+
+#. Python cache
+__pycache__/
+
+#. Custom
+/temp/
