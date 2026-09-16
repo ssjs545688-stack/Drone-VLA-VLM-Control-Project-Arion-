@@ -1,0 +1,13 @@
+1. generate_dataset.py
+ - num_rep = (반복횟수 설정)
+
+
+2. validate_dataset.py
+ - Qwen3 Tool Calling 파인튜닝 데이터셋(train.jsonl) 품질 및 규격 검증 스크립트
+ 
+ 
+3. test_train_lora.py
+ - 파인튜닝 스크립트
+ - OUTPUT_DIR = "./finetuned_qwen3_drone_lora" (Lora 가중치 저장)
+
+**CPU에서 돌려보려했는데 다운됩니다..조심

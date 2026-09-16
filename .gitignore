@@ -10,3 +10,9 @@ __pycache__/
 
 # LLM Model
 models/Qwen3-0.6B
+
+build/
+install/
+log/
+*.pyc
+.env
