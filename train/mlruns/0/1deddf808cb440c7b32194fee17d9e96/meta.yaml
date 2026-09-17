@@ -1,0 +1,14 @@
+artifact_uri: file:///home/work/Arion_B/train/mlruns/0/1deddf808cb440c7b32194fee17d9e96/artifacts
+end_time: 1789548309855
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 1deddf808cb440c7b32194fee17d9e96
+run_name: capable-auk-759
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1789544769217
+status: 3
+tags: []
+user_id: work
