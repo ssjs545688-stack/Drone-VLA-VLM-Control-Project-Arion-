@@ -11,6 +11,9 @@ __pycache__/
 # LLM Model
 models/Qwen3-0.6B
 
+# Data
+train/train.jsonl
+
 build/
 install/
 log/
