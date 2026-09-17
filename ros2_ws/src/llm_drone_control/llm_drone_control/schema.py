@@ -75,7 +75,7 @@ DEFINE_SCHEMA: List[Dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "goto_history",
-            "description": "이전 비행 위치 기록(History)으로 드론을 복귀시킵니다.",
+            "description": "기록된 과거 비행 위치(원점 또는 직전 위치)로 직선 복귀합니다.",
             "parameters": {
                 "type": "object",
                 "properties": {
