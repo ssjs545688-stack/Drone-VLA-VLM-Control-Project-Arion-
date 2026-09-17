@@ -50,11 +50,12 @@ class LLMService(Node):
             messages,
             tools=DEFINE_SCHEMA,
             add_generation_prompt=True,
+            enable_thinking=False,  # <think> 태그 비활성화
             return_tensors="pt",
             return_dict=True
         ).to(self.model.device)
 
-        with torch.no_grad():
+        with torch.inference_mode():
             outputs=self.model.generate(
                 **inputs,
                 max_new_tokens=self.max_new_tokens,
