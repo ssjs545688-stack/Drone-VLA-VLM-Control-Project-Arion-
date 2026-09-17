@@ -41,7 +41,7 @@ DEFINE_SCHEMA: List[Dict[str, Any]] = [
                 "dy는 현재 드론 기준 좌우 이동 거리이며, 양수는 왼쪽, 음수는 오른쪽입니다. "
                 "dz는 상승(+) / 하강(-) 상대 고도 변화량입니다. "
                 "d_yaw는 이동과 독립적인 상대 회전 각도이며, 반시계방향(+) / 시계방향(-)입니다."
-            )
+            ),
             "parameters":{
                 "type":"object",
                 "properties":{
