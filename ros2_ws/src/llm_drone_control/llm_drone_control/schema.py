@@ -32,31 +32,37 @@ DEFINE_SCHEMA: List[Dict[str, Any]] = [
         },
     },
     {
-        "type": "function",
-        "function": {
-            "name": "move",
-            "description": "드론의 현재 위치 및 기수 방향을 기준으로 상대 이동시킵니다.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "dx": {
-                        "type": "number",
-                        "description": "전진(+) / 후진(-) 상대 거리 (단위: 미터)",
+        "type":"function",
+        "function":{
+            "name":"move",
+            "description": (
+                "드론의 현재 위치와 기수 방향을 기준으로 상대 이동 및 회전을 수행합니다. "
+                "dx는 현재 기수 방향 기준 전진(+) / 후진(-) 이동 거리입니다. "
+                "dy는 좌우 이동 거리이며, 해당 방향으로 회전한 후 전진 또는 후진하여 이동합니다. "
+                "dx와 dy는 동시에 지정할 수 있으며, dz는 상승(+) / 하강(-) 상대 고도 변화량입니다."
+                "dx,dy,dz가 0이어도 d_yaw가 지정되면 해당 각도만큼 회전합니다."
+            ),
+            "parameters":{
+                "type":"object",
+                "properties":{
+                    "dx":{
+                        "type":"number",
+                        "description":"현재 기수 방향 기준 전진(+) / 후진(-) 이동 거리 (단위: 미터)"
                     },
-                    "dy": {
-                        "type": "number",
-                        "description": "우측(+) / 좌측(-) 상대 거리 (단위: 미터)",
+                    "dy":{
+                        "type":"number",
+                        "description":"좌우 이동 거리. 해당 방향으로 회전한 후 전진(+) / 후진(-)하여 이동 (단위: 미터)"
                     },
-                    "dz": {
-                        "type": "number",
-                        "description": "상승(+) / 하강(-) 상대 고도 변화량 (단위: 미터)",
+                    "dz":{
+                        "type":"number",
+                        "description":"상승(+) / 하강(-) 상대 고도 변화량 (단위: 미터)"
                     },
-                    "d_yaw": {
-                        "type": "number",
-                        "description": "시계방향(+) / 반시계방향(-) 상대 회전 각도 (단위: 도)",
-                    },
+                    "d_yaw":{
+                        "type":"number",
+                        "description":"상대 회전 각도. 반시계방향(+) / 시계방향(-) (단위: 도). dy가 있으면 dy 방향 이동을 위해 회전하고, dx,dy,dz가 모두 0이면 회전만 수행합니다."
+                    }
                 },
-                "required": ["dx", "dy", "dz", "d_yaw"],
+                "required":["dx","dy","dz","d_yaw"]
             },
         },
     },
@@ -75,7 +81,11 @@ DEFINE_SCHEMA: List[Dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "goto_history",
-            "description": "기록된 과거 비행 위치(원점 또는 직전 위치)로 직선 복귀합니다.",
+            "description":(
+                "기록된 과거 비행 위치로 직선 복귀합니다. "
+                "recall이 previous이면 직전 위치로 복귀하고, "
+                "first이면 최초 비행 시작 위치로 복귀합니다."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -83,10 +93,11 @@ DEFINE_SCHEMA: List[Dict[str, Any]] = [
                         "type": "string",
                         "enum": ["previous", "first"],
                         "description": (
-                            "복귀 유형. previous는 직전 명령 시작 위치, "
-                            "first는 최초 기록된 출발지/원점입니다."
+                            "복귀할 위치를 선택합니다. "
+                            "previous는 직전 위치, "
+                            "first는 최초 비행 시작 위치입니다."
                         ),
-                    }
+                    },
                 },
                 "required": ["recall"],
             },
