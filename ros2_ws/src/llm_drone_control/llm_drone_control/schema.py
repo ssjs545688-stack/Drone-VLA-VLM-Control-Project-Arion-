@@ -38,10 +38,10 @@ DEFINE_SCHEMA: List[Dict[str, Any]] = [
             "description": (
                 "드론의 현재 위치와 기수 방향을 기준으로 상대 이동 및 회전을 수행합니다. "
                 "dx는 현재 기수 방향 기준 전진(+) / 후진(-) 이동 거리입니다. "
-                "dy는 좌우 이동 거리이며, 해당 방향으로 회전한 후 전진 또는 후진하여 이동합니다. "
-                "dx와 dy는 동시에 지정할 수 있으며, dz는 상승(+) / 하강(-) 상대 고도 변화량입니다."
-                "dx,dy,dz가 0이어도 d_yaw가 지정되면 해당 각도만큼 회전합니다."
-            ),
+                "dy는 현재 드론 기준 좌우 이동 거리이며, 양수는 왼쪽, 음수는 오른쪽입니다. "
+                "dz는 상승(+) / 하강(-) 상대 고도 변화량입니다. "
+                "d_yaw는 이동과 독립적인 상대 회전 각도이며, 반시계방향(+) / 시계방향(-)입니다."
+            )
             "parameters":{
                 "type":"object",
                 "properties":{
@@ -51,7 +51,7 @@ DEFINE_SCHEMA: List[Dict[str, Any]] = [
                     },
                     "dy":{
                         "type":"number",
-                        "description":"좌우 이동 거리. 해당 방향으로 회전한 후 전진(+) / 후진(-)하여 이동 (단위: 미터)"
+                        "description":"현재 드론 기준 좌우 이동 거리. 양수는 왼쪽, 음수는 오른쪽 (단위: 미터)"
                     },
                     "dz":{
                         "type":"number",
@@ -59,7 +59,7 @@ DEFINE_SCHEMA: List[Dict[str, Any]] = [
                     },
                     "d_yaw":{
                         "type":"number",
-                        "description":"상대 회전 각도. 반시계방향(+) / 시계방향(-) (단위: 도). dy가 있으면 dy 방향 이동을 위해 회전하고, dx,dy,dz가 모두 0이면 회전만 수행합니다."
+                        "description":"이동과 독립적인 상대 회전 각도. 반시계방향(+) / 시계방향(-) (단위: 도)"
                     }
                 },
                 "required":["dx","dy","dz","d_yaw"]
@@ -135,18 +135,13 @@ SYSTEM_PROMPT=f"""너는 PX4 드론의 자연어 명령을 ROS 2 Tool Call로 �
 1. 사용자의 자연어 명령을 의미에 맞는 Tool Call로 변환한다.
 2. 지원되지 않는 동작은 임의의 Tool로 변환하지 않으며, 수행 가능한 Tool이 없는 명령은 아무것도 출력하지 않는다.
 3. 여러 동작이 순차적으로 필요한 경우 Tool Call을 실행 순서대로 여러 개 출력한다.
-4. move는 현재 드론의 기수 방향을 기준으로 상대 이동한다.
-5. move 호출 시 dx, dy, dz, d_yaw를 모두 포함한다. 변화가 없는 값은 0으로 지정한다.
-6. "이륙", "떠올라" 등 최초 이륙을 의미하는 명령은 takeoff를 사용한다. 단순한 상승/하강은 move의 dz를 사용한다.
-7. takeoff에는 altitude를 반드시 포함한다.
-8. goto_history의 recall은 "previous" 또는 "first"만 사용한다.
-9. goto_history(previous)는 직전 명령 시작 위치로 이동한다.
-10. goto_history(first)는 최초 기록된 출발 위치로 이동한다.
-11. reverse_plan은 지금까지 완료된 이동 경로를 역순으로 실행할 때 사용한다.
-12. reverse_plan은 반드시 arguments={{}} 형태로 호출한다.
-13. 좌표 x/y/z를 직접 계산하거나 추측하지 않는다.
-14. 설명문, 인사말, Markdown, 코드블록, Thinking 등 <tool_call> 외의 텍스트는 출력하지 않는다.
-15. JSON의 Key와 String Value는 반드시 표준 쌍따옴표(")를 사용한다.
+4. move 호출 시 dx, dy, dz, d_yaw를 모두 포함한다. 변화가 없는 값은 0으로 지정한다.
+5. "이륙", "떠올라" 등 최초 이륙을 의미하는 명령은 takeoff를 사용한다. 단순한 상승/하강은 move를 사용한다.
+6. takeoff에는 altitude를 반드시 포함한다.
+7. reverse_plan은 반드시 arguments={{}} 형태로 호출한다.
+8. 좌표 x/y/z를 직접 계산하거나 추측하지 않는다.
+9. 설명문, 인사말, Markdown, 코드블록, Thinking 등 <tool_call> 외의 텍스트는 출력하지 않는다.
+10. JSON의 Key와 String Value는 반드시 표준 쌍따옴표(")를 사용한다.
 
 출력 형식:
 <tool_call>{{"name":"툴이름","arguments":{{...}}}}</tool_call>
@@ -157,7 +152,16 @@ SYSTEM_PROMPT=f"""너는 PX4 드론의 자연어 명령을 ROS 2 Tool Call로 �
 <tool_call>{{"name":"move","arguments":{{"dx":2.0,"dy":0.0,"dz":0.0,"d_yaw":0.0}}}}</tool_call>
 
 사용자: "고도를 1.5미터 올려서 우측으로 1미터 이동해"
-<tool_call>{{"name":"move","arguments":{{"dx":0.0,"dy":1.0,"dz":1.5,"d_yaw":0.0}}}}</tool_call>
+<tool_call>{{"name":"move","arguments":{{"dx":0.0,"dy":-1.0,"dz":1.5,"d_yaw":0.0}}}}</tool_call>
+
+사용자: "왼쪽으로 2미터 이동해"
+<tool_call>{{"name":"move","arguments":{{"dx":0.0,"dy":2.0,"dz":0.0,"d_yaw":0.0}}}}</tool_call>
+
+사용자: "오른쪽으로 90도 회전해"
+<tool_call>{{"name":"move","arguments":{{"dx":0.0,"dy":0.0,"dz":0.0,"d_yaw":-90.0}}}}</tool_call>
+
+사용자: "왼쪽으로 45도 회전해"
+<tool_call>{{"name":"move","arguments":{{"dx":0.0,"dy":0.0,"dz":0.0,"d_yaw":45.0}}}}</tool_call>
 
 사용자: "방금 전 위치로 돌아가"
 <tool_call>{{"name":"goto_history","arguments":{{"recall":"previous"}}}}</tool_call>
