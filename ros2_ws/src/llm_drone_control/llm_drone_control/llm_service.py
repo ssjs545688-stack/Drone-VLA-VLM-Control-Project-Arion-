@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import yaml,torch,rclpy
+import re
 from rclpy.node import Node
 from std_msgs.msg import String
 from transformers import AutoTokenizer,AutoModelForCausalLM
@@ -63,10 +64,9 @@ class LLMService(Node):
                 top_k=None
             )
 
-        response.response=self.tokenizer.decode(
-            outputs[0][inputs["input_ids"].shape[-1]:],
-            skip_special_tokens=True
-        )
+        result=self.tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:],skip_special_tokens=True)
+        matches=re.findall(r"<tool_call>\s*(.*?)\s*</tool_call>",result,re.DOTALL)
+        response.response="\n".join(f"<tool_call>{m}</tool_call>" for m in matches)
 
         msg=String()
         msg.data=response.response
