@@ -1,6 +1,6 @@
 model:
   path: "~/Drone-VLA-VLM-Control-Project-Arion-/models/Qwen3-0.6B"
-  max_new_tokens: 256
+  max_new_tokens: 64
   do_sample: false
   torch_dtype: "auto"
   device_map: "auto"
