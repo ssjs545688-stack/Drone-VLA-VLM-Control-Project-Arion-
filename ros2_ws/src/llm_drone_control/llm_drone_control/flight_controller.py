@@ -23,6 +23,7 @@ from px4_msgs.msg import (
 
 import json
 import re
+import math
 
 
 class FlightController(Node):
@@ -75,7 +76,10 @@ class FlightController(Node):
         # -------------------------------------------------------------
         # 5. 내부 상태 변수 관리
         # -------------------------------------------------------------
+        self.current_x = 0.0
+        self.current_y = 0.0
         self.current_z = 0.0
+        self.current_yaw = 0.0
         self.is_armed = False
         self.nav_state = 0
         self.is_landed = True
@@ -83,7 +87,6 @@ class FlightController(Node):
         # 비행 제어 상태 머신: IDLE, ARMING, TAKEOFF, HOVER, LAND
         self.flight_state = "IDLE"
         self.target_altitude = 0.0  # 양수 (단위: m)
-        self.ground_z = 0.0         # 이륙 시점 지면 고도 기준점
         self.target_z = 0.0         # 실제 계산된 목표 NED z 좌표
         self.heartbeat_counter = 0
         self.arrival_counter = 0    # 목표 고도 연속 도달 카운터
@@ -97,8 +100,20 @@ class FlightController(Node):
     # 콜백 함수들
     # =================================================================
     def position_callback(self, msg: VehicleLocalPosition):
-        """현재 드론의 로컬 NED 좌표 (z: 고도 반대 방향, 위로 갈수록 음수)"""
+        """현재 드론의 로컬 NED 좌표 및 헤딩(Yaw)"""
+        self.current_x = msg.x
+        self.current_y = msg.y
         self.current_z = msg.z
+        self.current_yaw = msg.heading
+
+        # 실시간 위치 및 헤딩 로그 출력 (1초 주기로 스로틀링하여 터미널 도배 방지)
+        current_altitude = -self.current_z
+        yaw_deg = math.degrees(self.current_yaw)
+        self.get_logger().info(
+            f"📍 [드론 위치] X: {self.current_x:6.2f}m | Y: {self.current_y:6.2f}m | "
+            f"고도: {current_altitude:5.2f}m | Yaw: {yaw_deg:6.1f}°",
+            throttle_duration_sec=1.0
+        )
 
     def status_callback(self, msg: VehicleStatus):
         """기체 시동 상태 및 비행 모드 확인"""
@@ -133,14 +148,13 @@ class FlightController(Node):
         if func_name == "takeoff":
             alt = float(args.get("altitude", 2.0))
             self.target_altitude = alt
-            # 이륙 명령 시점의 지면 고도를 기록하고 지면 기준 상대 고도로 target_z 계산
-            self.ground_z = self.current_z
-            self.target_z = self.ground_z - alt
+            # PX4 NED 좌표계: 고도 상승은 -Z 방향 (이륙 지면 기준 -alt)
+            self.target_z = -abs(alt)
             self.heartbeat_counter = 0
             self.arrival_counter = 0
             self.flight_state = "ARMING"
             self.get_logger().info(
-                f"🚀 [명령 수신] 이륙 명령: {alt}m (지면 Z: {self.ground_z:.2f}m ➔ 목표 Z: {self.target_z:.2f}m)"
+                f"🚀 [명령 수신] 이륙 명령: 목표 고도 {alt:.2f}m (NED Z: {self.target_z:.2f}m)"
             )
 
         elif func_name == "land":
@@ -181,17 +195,17 @@ class FlightController(Node):
                 self.flight_state = "TAKEOFF"
 
         elif self.flight_state == "TAKEOFF":
-            # 지면 기준 상대 목표 고도로 지속적 Setpoint 발행
+            # 목표 고도로 지속적 Setpoint 발행
             self.publish_position_setpoint(0.0, 0.0, self.target_z)
 
-            # 고도 오차가 0.1m 이내로 들어오고, 1초(10회) 동안 안정적으로 유지될 때 호버링 전환
+            # 고도 오차가 0.2m 이내로 들어오고, 1초(10회) 동안 안정적으로 유지될 때 호버링 전환
             altitude_error = abs(self.current_z - self.target_z)
-            if altitude_error < 0.1:
+            if altitude_error < 0.2:
                 self.arrival_counter += 1
                 if self.arrival_counter >= 10:
-                    actual_agl = self.ground_z - self.current_z
+                    current_alt = -self.current_z
                     self.get_logger().info(
-                        f"🎯 목표 고도 도달 완료! (지면 기준 실상승: {actual_agl:.2f}m, NED Z: {self.current_z:.2f}m) ➔ 호버링 유지"
+                        f"🎯 목표 고도 도달 완료! (현재 고도: {current_alt:.2f}m) ➔ 호버링 유지"
                     )
                     self.flight_state = "HOVER"
             else:
