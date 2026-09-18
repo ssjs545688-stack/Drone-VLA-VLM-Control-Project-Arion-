@@ -6,6 +6,23 @@
 
 현재 프로젝트는 **온디바이스 추론을 목표로 하는 시뮬레이션 검증 단계**입니다. 학습과 추론에 필요한 Qwen3 모델 및 LoRA 어댑터는 외부 API가 아니라 로컬 파일에서 불러오며, PX4 SITL과 Gazebo는 별도의 시뮬레이션 PC에서 실행합니다.
 
+## 📝 프로젝트 정보
+
+**조장:** 신현수  
+**VLA 파인튜닝:** 정진한, 최지호  
+**함수 스키마 담당:** 김태형  
+**지도강사:** 박승휘
+
+## 📚 문서 목차
+
+프로젝트 문서와 관련 자료를 아래 목차에서 바로 확인할 수 있습니다.
+
+| 문서 | 설명 |
+|---|---|
+| [README.md](README.md) | 프로젝트 개발 일지 및 현재 진행 상황 |
+
+
+
 ## 📌 Git Commit Convention
 
 | Prefix | Description |
@@ -95,7 +112,7 @@ ros2_ws/src/llm_drone_control/
 └── setup.py
 
 models/
-├── Qwen3-0.6B/                    # 기본 로컬 모델
+├── Qwen3-0.6B(Qwen3-1.7B)/                    # 기본 로컬 모델
 └── finetuned_qwen3_drone_lora/    # 드론 명령 LoRA 어댑터
 ```
 
@@ -271,20 +288,6 @@ train/
 
 학습 결과인 LoRA 어댑터는 `models/finetuned_qwen3_drone_lora/`에 저장하고, `ros2_ws/src/llm_drone_control/config/model.yaml`의 `lora_path`에서 해당 위치를 지정합니다.
 
-## 📚 문서 목차
-
-프로젝트 문서와 관련 자료를 아래 목차에서 바로 확인할 수 있습니다.
-
-| 문서 | 설명 |
-|---|---|
-| [README.md](README.md) | 프로젝트 개발 일지 및 현재 진행 상황 |
-| [README (1).md](README%20%281%29.md) | 기존 자연어 기반 PX4 제어 구조와 실행 가이드 |
-| [코드 상호작용 보고서](docs/llm_drone_control_code_interaction_report.md) | ROS 2, Qwen, Tool Call, PX4 모듈의 역할과 연결 관계 |
-| [ROS 2 사용 가이드](ros2_ws/src/HowToUse.txt) | 의존성 설치, workspace 빌드, 서비스 호출 예시 |
-| [Recall 분리 메모](ros2_ws/src/how-to-separate_recall.txt) | Recall 기능 분리 관련 설계 메모 |
-| [비행 제어 테스트](test/test_flight_control.py) | PX4 Offboard 비행 제어 테스트 |
-| [스키마 테스트](test/test_flight_schema.py) | LLM Tool Call 스키마 테스트 |
-
 ## 🔗 참고 저장소 및 사용 도구
 
 ### 이전 기수 참고 저장소
@@ -317,11 +320,5 @@ train/
 - [ ] 실기체용 Pixhawk 및 companion computer 연동
 - [ ] 비행 로그 저장과 시각화 대시보드
 
-## 📝 프로젝트 정보
-
-**조장:** 신현수  
-**VLA 파인튜닝:** 정진한, 최지호  
-**함수 스키마 담당:** 김태형  
-**지도강사:** 박승휘
 
 본 프로젝트는 학습 및 연구 목적으로 작성되었습니다. 실기체 사용 전 충분한 시뮬레이션과 안전 검증이 필요합니다.
