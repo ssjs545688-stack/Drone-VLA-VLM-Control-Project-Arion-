@@ -1,0 +1,45 @@
+==========의존성추가================================
+sudo apt update
+sudo apt install portaudio19-dev python3-dev
+pip install SpeechRecognition pyaudio
+pip install openai-whisper soundfile
+
+**stt_node 실행중 아래와 같은 오류 발생시에
+[ERROR] [1789708987.558187132] [stt_node]: ⚠️ 오류 발생: module 'coverage' has no attribute 'types'
+
+pip install --upgrade coverage
+pip install --upgrade openai-whisper numba
+==================================================
+
+# 빌드
+cd ~/Drone-VLA-VLM-Control-Project-Arion-/ros2_wc/
+colcon build
+source install/setup.bash
+
+# llm_service.py 실행: GuideLLM 서비스 제공자 준비 및 /llm_response 토픽 퍼블리셔 준비.
+ros2 run llm_drone_control llm_service
+
+# (새 터미널)flight_controller.py 실행: /llm_response 토픽 구독 및 PX4 비행 제어기 준비.
+source install/setup.bash
+ros2 run llm_drone_control llm_service
+
+# (새 터미널)stt_node.py 실행:
+source install/setup.bash
+ros2 run llm_drone_control stt_node
+
+#
+## stt_node 내부:
+
+"enter"키 입력시 음성 수신을 시작합니다.
+마이크에서 음성을 수신하여 "2미터 높이로 이륙해줘" 등의 음성을 텍스트로 전환합니다.
+변환된 텍스트를 GuideLLM 서비스 요청으로 llm_service에 넘깁니다.
+
+## llm_service 내부:
+
+요청을 전달받아 Qwen LLM 모델을 거쳐 <tool_call>{"name": "takeoff", "arguments": {"altitude": 2.0}}</tool_call> 형식의 JSON 응답을 생성합니다.
+
+서비스 응답을 돌려줌과 동시에 /llm_response 토픽으로 해당 문자열을 발행합니다.
+
+## flight_controller 내부:
+
+/llm_response에 발행된 JSON 태그를 파싱하여 이륙/착륙 제어를 수행합니다.
