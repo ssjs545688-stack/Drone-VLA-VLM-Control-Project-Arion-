@@ -1,807 +1,641 @@
 #!/usr/bin/env python3
-"""
-Qwen3-0.6B 드론 제어 Tool Calling 파인튜닝용
-train/validation/test 데이터셋 자동 생성 스크립트
-"""
-
-import json
-import random
+import json,random
 from collections import Counter
 from pathlib import Path
-from llm_drone_control.schema import SYSTEM_PROMPT
 
+try:
+    from llm_drone_control.schema import SYSTEM_PROMPT
+except ImportError:
+    SYSTEM_PROMPT="You are an AI assistant that controls a drone using tool calls."
 
-# ============================================================
-# 설정값
-# ============================================================
+SEED=42
+random.seed(SEED)
 
-# 데이터 수 = NUM_TRAIN * (5 + MOVES_PER_LOOP) + NUM_COMPOUND + NUM_NEGATIVE
-NUM_TRAIN = 70
-NUM_VAL = 15
-NUM_TEST = 30
+# 데이터 수 = NUM + COMPOUND + NEGATIVE
+NUM_TRAIN,NUM_VAL,NUM_TEST=600,120,180
+NUM_COMPOUND={"train":300,"val":50,"test":70}
+NUM_NEGATIVE={"train":80,"val":20,"test":30}
+OUTPUT_PATH="dataset"
 
-MOVES_PER_LOOP = 4    # 루프 당 move 수
-ROTATE_PROB = 0.3     # move 중 회전 비율
+DIST_RANGE_M=(0.3,8.0)
+DIST_RANGE_CM=(20,500)
+ANGLE_RANGE=(5,180)
+ALT_RANGE=(1.0,5.0)
 
-DIST_RANGE_M = (0.3, 8.0)     # 병진 이동 거리(미터 단위로 말할 때) 범위
-DIST_RANGE_CM = (20, 500)     # 병진 이동 거리(센티미터 단위로 말할 때) 범위, 정수
-ANGLE_RANGE = (5, 180)        # 회전 각도 범위(정수, 도)
-ALT_RANGE = (1.0, 5.0)        # 이륙 고도 범위
+DIGITS=["","일","이","삼","사","오","육","칠","팔","구"]
+UNITS=["","십","백","천"]
+NATIVE={1:"한",2:"두",3:"세",4:"네",5:"다섯",6:"여섯",7:"일곱",8:"여덟",9:"아홉",10:"열"}
 
-NUM_COMPOUND = {"train": 30, "val": 6, "test": 6}   # 복합 명령
-NUM_NEGATIVE = {"train": 20, "val": 4, "test": 4}   # 엉뚱한 질문
+AXES={
+    "forward":(1,0,0),"back":(-1,0,0),"left":(0,1,0),
+    "right":(0,-1,0),"up":(0,0,1),"down":(0,0,-1)
+}
+DIRS=list(AXES)
 
-OUTPUT_PATH = "dataset"
+def uniq(xs): return list(dict.fromkeys(xs))
 
+def fmt_num(n):
+    n=float(n)
+    return str(int(n)) if n.is_integer() else f"{n:g}"
 
-# ============================================================
-# 한글 수사(sino-Korean) 변환 유틸
-# ============================================================
+def int_kor(n):
+    if n==0:return "영"
+    s="";ns=str(abs(int(n)));l=len(ns)
+    for i,c in enumerate(ns):
+        d=int(c);u=l-i-1
+        if d:
+            s+=("" if d==1 and u else DIGITS[d])
+            if u<4:s+=UNITS[u]
+    return s
 
-_SINO_DIGITS = ["", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"]
-_SINO_UNITS = ["", "십", "백", "천"]  # 최대 9999까지. 이 스크립트의 값 범위(<1000)엔 충분.
+def number_to_korean(n):
+    n=float(n)
+    if n.is_integer():return int_kor(int(n))
+    a,b=f"{n:.1f}".split(".")
+    return f"{int_kor(int(a))}점{DIGITS[int(b)]}"
 
+# 숫자표현 다양하게
+def number_variants(n,unit,level="train"):
+    n=float(n);s=fmt_num(n);k=number_to_korean(n)
 
-def _int_to_sino_korean(num: int) -> str:
-    if num == 0:
-        return "영"
-    result = ""
-    digits = str(num)
-    length = len(digits)
-    for i, ch in enumerate(digits):
-        d = int(ch)
-        unit_idx = length - i - 1
-        if d == 0:
-            continue
-        if d == 1 and unit_idx > 0:
-            # "일십", "일백"이 아니라 "십", "백"으로 읽는 관례
-            result += _SINO_UNITS[unit_idx] if unit_idx < len(_SINO_UNITS) else str(d)
+    if unit=="m":
+        if level=="train":
+            base=[
+                f"{s}m",f"{s} m",f"{s}미터",f"{s} 미터",
+                f"{k}미터",f"{k} 미터",
+                f"{s}m 정도",f"{s}m쯤",f"{s}m만큼",
+                f"{s}미터 정도",f"{s}미터쯤",f"{s}미터만큼",
+                f"약 {s}m",f"대략 {s}m",f"한 {s}m쯤",
+                f"약 {s}미터",f"대략 {s}미터"
+            ]
+            if n.is_integer() and 1<=int(n)<=10:
+                x=NATIVE[int(n)]
+                base += [
+                    f"{x}미터",f"{x} 미터",
+                    f"{x}미터 정도",f"{x}미터쯤",
+                    f"{x}미터만큼"
+                ]
+        elif level=="val":
+            base=[
+                f"{s}m 정도",f"약 {s}미터",f"{s}미터쯤",
+                f"{k}미터 정도",f"{s}미터만큼"
+            ]
         else:
-            unit = _SINO_UNITS[unit_idx] if unit_idx < len(_SINO_UNITS) else ""
-            result += _SINO_DIGITS[d] + unit
-    return result
+            base=[
+                f"{s}미터 남짓",f"{s}미터가량",
+                f"{s}미터쯤 되는 거리",f"{s}미터 정도의 거리",
+                f"{s}미터만큼의 거리",f"{k}미터가량"
+            ]
+        return uniq(base)
 
+    if level=="train":
+        base=[
+            f"{int(n)}cm",f"{int(n)} cm",
+            f"{int(n)}센티",f"{int(n)} 센티",
+            f"{int(n)}센티미터",f"{int(n)} 센티미터",
+            f"{k}센티",f"{k} 센티",
+            f"{k}센티미터",f"{k} 센티미터",
+            f"약 {int(n)}cm",f"대략 {int(n)}센티미터"
+        ]
+    elif level=="val":
+        base=[
+            f"{int(n)}cm 정도",f"약 {int(n)}센티",
+            f"{int(n)}센티미터쯤",f"{k}센티미터 정도"
+        ]
+    else:
+        base=[
+            f"{int(n)}센티 남짓",f"{int(n)}센티가량",
+            f"{int(n)}센티미터쯤 되는 거리",
+            f"{int(n)}센티미터 정도의 거리",
+            f"{k}센티가량"
+        ]
+    return uniq(base)
 
-def number_to_korean(num) -> str:
-    """3.2 -> '삼점이', 30 -> '삼십', 0.5 -> '영점오' 같은 한글 숫자 읽기로 변환.
-    실제 ASR 전사본에 종종 등장하는 '한글 수사' 표기 노이즈를 재현하기 위함."""
-    if isinstance(num, int) or float(num) == int(num):
-        return _int_to_sino_korean(int(num))
-    int_part = int(num)
-    dec_str = f"{num:.1f}".split(".")[1]
-    int_kor = _int_to_sino_korean(int_part) if int_part != 0 else "영"
-    dec_kor = "".join(_SINO_DIGITS[int(d)] if d != "0" else "영" for d in dec_str)
-    return f"{int_kor}점{dec_kor}"
+def dist(unit=None):
+    unit=unit or random.choice(["m","cm"])
+    if unit=="cm":
+        n=random.randint(*DIST_RANGE_CM)
+        return n,n/100,"cm"
+    n=round(random.uniform(*DIST_RANGE_M),1)
+    return n,n,"m"
 
+def altitude():return round(random.uniform(*ALT_RANGE),1)
+def angle():return random.randint(*ANGLE_RANGE)
 
-# ============================================================
-# train/val용 노이즈 주입 (test 전용 노이즈였던 것을 학습 가능하게 이전)
-# ============================================================
-
-COMMON_TYPO_MAP = {
-    "이동해": "이동해줘",
-    "돌아가": "돌아가라",
-    "복귀해": "복기해",
-    "고도를": "고도을",
-    "높여라": "높혀라",
-    "낮춰라": "낮춰라",
-    "회전해": "회잔해",
-    "전진해": "전진해라",
-    "후진해": "후진해줘",
+TYPO={
+    "이동해":"이동해줘","복귀해":"복귀해줘","높여라":"높혀라",
+    "회전해":"회잔해","전진해":"전진해라","후진해":"후진해줘",
+    "움직여":"움직여줘","내려가":"내려와","올라가":"올라와",
+    "돌려줘":"돌려쥐"
 }
 
+# tarin data 노이즈
+def add_train_noise(s):
+    if random.random()<.03:
+        keys=[k for k in TYPO if k in s]
+        if keys:
+            k=random.choice(keys);s=s.replace(k,TYPO[k],1)
+    if random.random()<.04:
+        p=s.split()
+        if len(p)>2:
+            i=random.randrange(len(p)-1)
+            p[i]+=p.pop(i+1)
+            s=" ".join(p)
+    return s
 
-def inject_typo(text: str, prob: float) -> str:
-    if random.random() >= prob:
-        return text
-    candidates = [k for k in COMMON_TYPO_MAP if k in text]
-    if not candidates:
-        return text
-    key = random.choice(candidates)
-    return text.replace(key, COMMON_TYPO_MAP[key], 1)
+TRAIN_COMMON={
+"takeoff":[
+    "고도 {v}로 이륙해","{v} 높이로 이륙해",
+    "{v} 고도로 이륙시켜","드론을 {v} 고도로 이륙시켜",
+    "지상에서 {v} 고도로 이륙해","지면에서 이륙해서 {v} 고도로 올라가",
+    "드론을 지상에서 띄워 {v} 고도로 이륙시켜",
+    "이륙해서 고도 {v}까지 올라가","드론을 처음 이륙시켜 {v} 고도로 올려",
+    "처음 이륙할 때 고도를 {v}로 설정해","드론을 {v} 고도로 띄워서 이륙시켜"
+],
+"land":[
+    "착륙해","착륙해줘","지금 위치에 착륙해","현재 위치에 내려줘",
+    "지면으로 착륙해라","바닥으로 내려가","지금 자리에서 내려",
+    "안전하게 착륙해줘","현재 위치에서 착륙해","지상으로 내려와",
+    "비행을 끝내고 착륙해","그대로 내려앉아"
+],
+"previous":[
+    "직전 위치로 돌아가","방금 전 위치로 돌아가","이전 위치로 복귀해",
+    "바로 전 위치로 가줘","아까 있던 위치로 돌아가",
+    "직전에 있던 곳으로 돌아와","한 단계 전 위치로 돌아가",
+    "방금 이동하기 전 위치로 가","이전 지점으로 되돌아가"
+],
+"first":[
+    "처음 위치로 돌아가","최초 위치로 복귀해","시작 위치로 돌아가",
+    "처음 출발했던 곳으로 가","원래 위치로 돌아가","출발 위치로 복귀해",
+    "비행 시작점으로 돌아가","처음 있던 곳으로 돌아와",
+    "초기 위치로 복귀해","처음 위치로 되돌아가"
+],
+"reverse":[
+    "왔던 경로로 되돌아가","지나온 경로를 역으로 돌아가",
+    "이동했던 경로를 거꾸로 따라가","왔던 길을 반대로 돌아가",
+    "지나온 동선을 따라 되돌아가","이전에 이동한 경로를 역순으로 가",
+    "방금까지 왔던 경로를 되짚어가"
+],
+"forward":[
+    "앞으로 {v} 전진해","{v} 앞으로 가줘","전방으로 {v} 이동해",
+    "앞쪽으로 {v} 가","앞으로 {v}미터 가줘","기체 앞쪽으로 {v} 이동해",
+    "전진해서 {v}만큼 가","앞으로 {v}만큼 움직여","정면으로 {v} 이동해",
+    "기수가 향한 방향으로 {v} 이동해","기체 머리 방향으로 {v} 가",
+    "코가 가리키는 방향으로 {v} 이동해","기체가 바라보는 쪽으로 {v} 가",
+    "기체가 향하는 방향으로 {v} 이동해", "기체가 보는 방향으로 {v} 전진해"
+],
+"back":[
+    "뒤로 {v} 물러나","{v} 뒤로 가줘","후방으로 {v} 이동해",
+    "뒤쪽으로 {v} 가","뒤로 {v}미터 가줘","후진해서 {v}만큼 가",
+    "뒤로 {v}만큼 움직여","기체 뒤쪽으로 {v} 이동해",
+    "기체 뒤로 {v} 가","기수 반대 방향으로 {v} 이동해",
+    "꼬리 방향으로 {v} 가","기체가 바라보는 방향의 반대로 {v} 이동해",
+    "기체가 향하는 방향의 반대로 {v} 이동해", "기체가 보는 방향의 반대쪽으로 {v} 가"
+],
+"left":[
+    "왼쪽으로 {v} 이동해","{v} 왼쪽으로 가줘","좌측으로 {v} 가",
+    "왼쪽으로 {v} 움직여","왼쪽으로 {v}미터 이동해",
+    "좌측으로 {v}만큼 이동해","왼쪽으로 {v} 이동해줘",
+    "기체 왼쪽으로 {v} 가","좌현으로 {v} 이동해",
+    "기체 기준 왼쪽으로 {v} 이동해","왼쪽 측면으로 {v} 이동해"
+],
+"right":[
+    "오른쪽으로 {v} 이동해","{v} 오른쪽으로 가줘","우측으로 {v} 가",
+    "오른쪽으로 {v} 움직여","오른쪽으로 {v}미터 이동해",
+    "우측으로 {v}만큼 이동해","오른쪽으로 {v} 이동해줘",
+    "기체 오른쪽으로 {v} 가","우현으로 {v} 이동해",
+    "기체 기준 오른쪽으로 {v} 이동해","오른쪽 측면으로 {v} 이동해"
+],
+"up":[
+    "위로 {v} 상승해","{v}만큼 위로 올라가","위쪽으로 {v} 이동해",
+    "현재 고도에서 {v}만큼 상승해","지금 위치에서 {v}만큼 올라가",
+    "현재 위치에서 위로 {v} 이동해","현재 고도에서 {v} 높여",
+    "기체를 현재 위치에서 {v}만큼 들어올려",
+    "비행 중인 상태에서 {v}만큼 상승해","현재 위치 기준으로 {v} 올라가",
+    "공중에서 {v}만큼 더 올라가","이미 떠 있는 상태에서 {v}만큼 상승해"
+],
+"down":[
+    "아래로 {v} 내려가","{v}만큼 아래로 내려가","하강해서 {v} 가",
+    "아래쪽으로 {v} 이동해","수직으로 {v} 내려가","{v}만큼 하강해",
+    "고도를 {v} 낮춰","아래로 {v}미터 내려가"
+],
+"cw":[
+    "시계 방향으로 {a}도 회전해",
+    "오른쪽으로 {a}도 회전해",
+    "시계 방향으로 {a}도 돌려",
+    "우회전해서 {a}도 돌아",
+    "{a}도만큼 시계 방향으로 돌아",
+    "기체를 오른쪽으로 {a}도 돌려",
+    "오른쪽으로 {a}도 틀어",
+    "우측으로 {a}도 회전해",
+    "기체 방향을 오른쪽으로 {a}도 바꿔"
+],
+"ccw":[
+    "반시계 방향으로 {a}도 회전해",
+    "왼쪽으로 {a}도 회전해",
+    "반시계 방향으로 {a}도 돌려",
+    "좌회전해서 {a}도 돌아",
+    "{a}도만큼 반시계 방향으로 돌아",
+    "기체를 왼쪽으로 {a}도 돌려",
+    "왼쪽으로 {a}도 틀어",
+    "좌측으로 {a}도 회전해",
+    "기체 방향을 왼쪽으로 {a}도 바꿔"
+]}
 
+VAL_EXTRA={
+"takeoff":[
+    "{v} 높이로 이륙시켜","고도 {v}로 이륙해",
+    "{v} 고도로 이륙하게 해","지상에서 {v} 고도로 이륙해",
+    "처음 이륙해서 고도 {v}까지 올라가"
+],
+"land":[
+    "현재 자리에서 지상으로 내려","바로 지상에 내려줘",
+    "현재 위치에서 지면으로 내려가","비행을 멈추고 내려와"
+],
+"previous":[
+    "방금 전 자리로 다시 가","바로 전에 있던 곳으로 돌아가",
+    "이전 지점으로 다시 이동해"
+],
+"first":[
+    "비행을 시작한 위치로 돌아가","출발했던 지점으로 돌아와",
+    "처음 출발점으로 다시 가"
+],
+"reverse":[
+    "지나온 길을 따라 다시 돌아가","이동했던 길을 반대로 따라가",
+    "왔던 경로를 거꾸로 되짚어가"
+],
+"forward":[
+    "앞쪽으로 {v} 가줘","정면 쪽으로 {v} 이동해",
+    "전방을 향해 {v}만큼 가"
+],
+"back":[
+    "뒤쪽으로 {v} 물러가","후방으로 {v}만큼 이동해",
+    "뒤편을 향해 {v} 가줘"
+],
+"left":[
+    "왼편으로 {v} 가줘","좌측 방향으로 {v} 이동해",
+    "왼쪽 편으로 {v}만큼 가"
+],
+"right":[
+    "오른편으로 {v} 가줘","우측 방향으로 {v} 이동해",
+    "오른쪽 편으로 {v}만큼 가"
+],
+"up":[
+    "현재 위치에서 위쪽으로 {v}만큼 올라가",
+    "비행 중인 상태에서 {v}만큼 상승해",
+    "현재 고도에서 {v}만큼 더 올라가",
+    "지금 위치에서 수직으로 {v} 이동해",
+    "이미 떠 있는 상태에서 {v}만큼 상승해"
+],
+"down":[
+    "아래쪽으로 {v}만큼 내려가","{v} 높이만큼 하강해",
+    "수직으로 아래로 {v} 이동해"
+],
+"cw":[
+    "오른쪽으로 {a}도 돌아","시계 방향으로 {a}도 돌려줘",
+    "{a}도 우회전해"
+],
+"ccw":[
+    "왼쪽으로 {a}도 돌아","반시계 방향으로 {a}도 돌려줘",
+    "{a}도 좌회전해"
+]}
 
-def inject_spacing_noise(text: str, prob: float) -> str:
-    """공백 기준 인접 토큰 두 개를 붙여써서 '붙여쓰기' 오류를 재현."""
-    if random.random() >= prob:
-        return text
-    tokens = text.split(" ")
-    if len(tokens) < 2:
-        return text
-    idx = random.randrange(len(tokens) - 1)
-    tokens[idx] = tokens[idx] + tokens[idx + 1]
-    del tokens[idx + 1]
-    return " ".join(tokens)
+# Train/Val에서 직접 사용하지 않는 OOD 표현만 사용
+TEST_OOD={
+"takeoff":[
+    "{v} 고도로 이륙시켜봐",
+    "고도 {v}에서 비행을 시작해",
+    "지상에서 {v} 고도로 이륙해",
+    "처음 비행을 {v} 고도에서 시작해",
+    "이륙 고도를 {v}로 설정해",
+    "지면을 떠나 {v} 고도로 이륙해"
+],
+"land":[
+    "비행을 종료하고 착륙해",
+    "현재 비행을 끝내고 지상에 내려",
+    "기체를 지상에 착지시켜",
+    "비행을 마치고 땅으로 내려가",
+    "현재 위치에서 비행을 종료해"
+],
+"previous":[
+    "바로 앞서 있던 위치로 이동해",
+    "직전에 머물렀던 위치를 다시 찾아가",
+    "한 단계 이전 위치로 되돌아가",
+    "가장 최근에 이동하기 전 위치로 돌아가",
+    "직전 위치를 다시 방문해"
+],
+"first":[
+    "비행을 시작했던 위치로 되돌아가",
+    "처음 출발했던 좌표로 돌아가",
+    "비행 시작 지점으로 복귀해",
+    "최초 출발 위치를 다시 찾아가",
+    "처음 비행을 시작한 곳으로 돌아가"
+],
+"reverse":[
+    "지금까지 이동한 경로를 반대 순서로 따라가",
+    "앞서 지나온 경로를 역방향으로 되짚어가",
+    "이전에 이동한 순서를 거꾸로 따라가",
+    "지금까지 지나온 경로를 역순으로 이동해",
+    "방금까지의 이동 경로를 반대로 되돌아가"
+],
+"forward":[
+    "기수가 향하는 방향으로 {v} 이동해",
+    "기체의 전방을 따라 {v} 전진해",
+    "기체 앞쪽을 기준으로 {v}만큼 이동해",
+    "기체 정면 방향으로 {v}만큼 전진해",
+    "기체의 머리 방향을 따라 {v} 이동해"
+],
+"back":[
+    "기수가 향하는 방향의 반대로 {v} 이동해",
+    "기체의 후방을 따라 {v}만큼 이동해",
+    "기체 뒤쪽을 기준으로 {v} 후진해",
+    "기체 정면의 반대 방향으로 {v} 이동해",
+    "기체 꼬리가 향한 쪽으로 {v} 이동해"
+],
+"left":[
+    "기체의 좌현 방향으로 {v} 이동해",
+    "기체 왼편을 따라 {v}만큼 이동해",
+    "기체 기준 좌측으로 {v} 이동해",
+    "기체의 왼쪽 측면으로 {v}만큼 이동해",
+    "기체의 좌측 방향을 따라 {v} 이동해"
+],
+"right":[
+    "기체의 우현 방향으로 {v} 이동해",
+    "기체 오른편을 따라 {v}만큼 이동해",
+    "기체 기준 우측으로 {v} 이동해",
+    "기체의 오른쪽 측면으로 {v}만큼 이동해",
+    "기체의 우측 방향을 따라 {v} 이동해"
+],
+"up":[
+    "현재 비행 위치에서 {v}만큼 고도를 높여",
+    "현재 고도에서 {v}만큼 더 상승해",
+    "기체의 현재 높이에서 {v}만큼 올라가",
+    "비행 중인 상태에서 {v}만큼 위로 이동해",
+    "현재 위치를 유지한 채 고도만 {v}만큼 높여"
+],
+"down":[
+    "현재 비행 위치에서 {v}만큼 고도를 낮춰",
+    "현재 고도에서 {v}만큼 더 내려가",
+    "기체의 현재 높이에서 {v}만큼 하강해",
+    "비행 중인 상태에서 {v}만큼 아래로 이동해",
+    "현재 위치를 유지한 채 고도만 {v}만큼 낮춰"
+],
+"cw":[
+    "기체의 방향을 오른쪽으로 {a}도 전환해",
+    "현재 진행 방향에서 시계 방향으로 {a}도 회전해",
+    "기체의 진행 방향을 우측으로 {a}도 바꿔",
+    "현재 방향에서 오른쪽으로 {a}도 선회해",
+    "기체의 방향을 시계 방향으로 {a}도 틀어"
+],
+"ccw":[
+    "기체의 방향을 왼쪽으로 {a}도 전환해",
+    "현재 진행 방향에서 반시계 방향으로 {a}도 회전해",
+    "기체의 진행 방향을 좌측으로 {a}도 바꿔",
+    "현재 방향에서 왼쪽으로 {a}도 선회해",
+    "기체의 방향을 반시계 방향으로 {a}도 틀어"
+]}
 
+TEST_PREFIX=[
+    "야 , ","드론아 ","자, ","음... ","오케이, ",
+    "지금 바로 ","일단 ","헤이 , ","좋아, ","잠깐, "
+]
+TEST_SUFFIX=[
+    " 부탁해"," 빨리 해"," ㄱㄱ"," 바로 해",
+    " 처리해"," 알겠지?"," 해버려"," 좀 해줘"
+]
 
-def apply_train_val_noise(text: str, typo_prob: float, spacing_prob: float) -> str:
-    text = inject_typo(text, typo_prob)
-    text = inject_spacing_noise(text, spacing_prob)
+TRAIN_CONNECTORS=[" 그리고 "," 한 다음 "," 하고 나서 "," 이동한 뒤 "," 그 다음에 "," 이어서 "]
+VAL_CONNECTORS=[" 그리고 "," 한 뒤 "," 이어서 "," 하고 "]
+TEST_CONNECTORS=[" 그리고 "," 한 다음 "," 이어서 "," 그 뒤에 "," 이후 바로 "," 하고 나서 "]
+
+NEG_TRAIN=[
+    "오늘 날씨 어때?","내일 날씨 알려줘","노래 좀 틀어줘","음악 재생해줘",
+    "커피 한 잔 타줘","물 좀 가져다줘","지금 몇 시야?","현재 시간 알려줘",
+    "라면 끓이는 법 알려줘","김치찌개 레시피 알려줘","사진 한 장 찍어봐",
+    "동영상 촬영해줘","주변 사람에게 메시지 보내줘","친구에게 문자 보내줘",
+    "인터넷 검색해줘","웹에서 정보 찾아줘","뉴스 알려줘","오늘 뉴스 검색해줘",
+    "주변 사람에게 전화해줘","알람 설정해줘","타이머 설정해줘","계산해줘",
+    "오늘 일정 알려줘","내일 일정 확인해줘","메일 보내줘","파일 열어줘",
+    "컴퓨터 종료해줘","불 좀 꺼줘","에어컨 켜줘","근처 식당 찾아줘",
+    "사진을 분석해줘","사람 얼굴을 인식해줘","주변을 촬영해줘",
+    "드론 배터리 상태 알려줘","드론 카메라 영상을 보여줘","주변 장애물을 알려줘",
+    "GPS 위치 알려줘","현재 위치를 지도에 표시해줘","비행 기록을 보여줘"
+]
+
+NEG_VAL=[
+    "날씨 알려줘","내일 비 와?","노래 재생해줘","노래 불러줘",
+    "현재 시간 말해줘","지금은 몇 시야?","커피 만들어줘","물 가져다줘",
+    "요리법 알려줘","사진 찍어줘","동영상 찍어줘","뉴스 검색해줘",
+    "인터넷에서 찾아줘","문자 보내줘","전화 걸어줘","알람 맞춰줘",
+    "일정 확인해줘","메일 작성해줘","근처 맛집 찾아줘","주변 사람 얼굴을 인식해줘",
+    "드론의 카메라 화면을 보여줘","배터리 잔량 알려줘","GPS 좌표 알려줘",
+    "비행 기록 확인해줘","주변 상황을 설명해줘","장애물 위치 알려줘"
+]
+
+NEG_TEST=[
+    "오늘 비 오냐?","내일 날씨 보고 알려줘","노래 하나 틀어봐","음악 좀 재생해",
+    "몇 시인지 확인해줘","현재 시간을 알려줘","라면 레시피 좀","요리 방법 알려줘",
+    "불 좀 꺼줄래?","에어컨 켜줘","자율주행 자동차는 언제 나오냐?",
+    "내일 날씨 보고 일정도 짜줘","근처 맛집 추천해줘","사진 찍어서 보내줘",
+    "드론 카메라로 사람 얼굴 인식해줘","주변 상황을 보고 알아서 판단해줘",
+    "인터넷에서 가장 가까운 카페 찾아줘","친구한테 문자 보내줘",
+    "전화 좀 걸어줘","알람 하나 맞춰줘","최신 뉴스 찾아줘","메일 하나 보내줘",
+    "드론 배터리 상태 확인해줘","GPS 좌표 확인해줘","비행 기록 보여줘",
+    "주변 장애물 위치 알려줘","카메라 화면 확인해줘"
+]
+
+ACTION_ORDER=list(TRAIN_COMMON)
+
+def make_move_call(action,value):
+    x,y,z=AXES[action]
+    return "move",{"dx":x*value,"dy":y*value,"dz":z*value,"d_yaw":0.0}
+
+def make_sample(text,tool,args):
+    return {"messages":[
+        {"role":"system","content":SYSTEM_PROMPT},
+        {"role":"user","content":text},
+        {"role":"assistant","content":f'<tool_call>{json.dumps({"name":tool,"arguments":args},ensure_ascii=False)}</tool_call>'}
+    ]}
+
+def make_multi(text,calls):
+    blocks=[f'<tool_call>{json.dumps({"name":tool,"arguments":args},ensure_ascii=False)}</tool_call>' for tool,args in calls]
+    return {"messages":[
+        {"role":"system","content":SYSTEM_PROMPT},
+        {"role":"user","content":text},
+        {"role":"assistant","content":"\n".join(blocks)}
+    ]}
+
+def make_refusal(text):
+    return {"messages":[
+        {"role":"system","content":SYSTEM_PROMPT},
+        {"role":"user","content":text},
+        {"role":"assistant","content":"지원하지 않는 명령입니다."}
+    ]}
+
+def add_test_style(text,guarantee=False):
+    if guarantee or random.random()<.65:text=random.choice(TEST_PREFIX)+text
+    if guarantee or random.random()<.55:text+=random.choice(TEST_SUFFIX)
     return text
 
-
-# ============================================================
-# 샘플 빌더
-# ============================================================
-
-def make_sample(user_cmd: str, func_name: str, args: dict) -> dict:
-    """단일 tool_call 샘플"""
-    tool_call = json.dumps({"name": func_name, "arguments": args}, ensure_ascii=False)
-    return {
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_cmd},
-            {"role": "assistant", "content": f"<tool_call>{tool_call}</tool_call>"},
-        ]
-    }
-
-
-def make_multi_call_sample(user_cmd: str, calls: list) -> dict:
-    """복합 명령: calls = [(func_name, args), (func_name, args), ...]
-    assistant 응답에 tool_call 블록을 순서대로 이어붙인다."""
-    blocks = "\n".join(
-        f'<tool_call>{json.dumps({"name": name, "arguments": args}, ensure_ascii=False)}</tool_call>'
-        for name, args in calls
-    )
-    return {
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_cmd},
-            {"role": "assistant", "content": blocks},
-        ]
-    }
-
-
-def make_refusal_sample(user_cmd: str, refusal_text: str) -> dict:
-    """스코프 밖 요청: tool_call 없이 평문으로 응답"""
-    return {
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_cmd},
-            {"role": "assistant", "content": refusal_text},
-        ]
-    }
-
-
-# ============================================================
-# 방향/좌표 정의 (REP-103 FLU 바디 프레임: x-전방, y-좌측, z-상방)
-# ============================================================
-
-TRANSLATE_AXES = {
-    "forward": (1, 0, 0),
-    "back": (-1, 0, 0),
-    "right": (0, -1, 0),
-    "left": (0, 1, 0),
-    "up": (0, 0, 1),
-    "down": (0, 0, -1),
-}
-
-
-def m(*templates):
-    """미터 단위로 말하는 템플릿들을 (템플릿, 'm') 튜플로 감싼다."""
-    return [(t, "m") for t in templates]
-
-
-def cm(*templates):
-    """센티미터 단위로 말하는 템플릿들을 (템플릿, 'cm') 튜플로 감싼다."""
-    return [(t, "cm") for t in templates]
-
-
-def gen_distance_value(unit: str):
-    """unit에 맞는 자연스러운 범위에서 값을 생성하고, 항상 '미터'로 환산한 값도 함께 반환.
-    반환: (표시용 원본 값, 실제 인자로 쓸 미터 값)"""
-    if unit == "cm":
-        raw = int(round(random.uniform(*DIST_RANGE_CM)))
-        meters = raw / 100.0
-    else:
-        raw = round(random.uniform(*DIST_RANGE_M), 1)
-        meters = raw
-    return raw, meters
-
-
-def make_translate_sample(direction: str, unit_templates: list):
-    template, unit = random.choice(unit_templates)
-    raw, meters = gen_distance_value(unit)
-    text = template.format(dist=raw, dist_kor=number_to_korean(raw))
-    sx, sy, sz = TRANSLATE_AXES[direction]
-    args = {"dx": sx * meters, "dy": sy * meters, "dz": sz * meters, "d_yaw": 0.0}
-    return text, args
-
-
-def make_rotate_sample(direction: str, templates: list):
-    angle = int(round(random.uniform(*ANGLE_RANGE)))
-    template = random.choice(templates)
-    # 모든 템플릿에 dist/dist_kor/angle/angle_kor/alt/alt_kor를 전부 넘겨서
-    # 어떤 플레이스홀더를 쓰든(super-set kwargs) KeyError가 나지 않게 한다.
-    text = template.format(angle=angle, angle_kor=number_to_korean(angle))
-    sign = -1 if direction == "cw" else 1  # 시계방향(오른쪽 회전) = 음수 yaw
-    args = {"dx": 0.0, "dy": 0.0, "dz": 0.0, "d_yaw": sign * angle}
-    return text, args
-
-
-# ============================================================
-# Train 문장 패턴
-# ============================================================
-
-TRAIN_TAKEOFF = [
-    "드론 고도 {alt}m로 띄워줘",
-    "{alt}미터 높이로 이륙해",
-    "지면에서 {alt}m 상승해서 떠라",
-    "드론 높이 {alt}m까지 수직 이륙해",
-    "고도 {alt}m로 이륙해",
-    "고도 {alt_kor}미터로 이륙해",       # 한글 수사 노출 (train)
-]
-
-TRAIN_LAND = [
-    "이제 바닥으로 안전하게 착륙해",
-    "지금 위치에 착륙해줘",
-    "착륙해",
-    "지면으로 착륙해라",
-    "착륙하여 비행 종료해",
-    "드론을 착륙시켜 지면에 둬",
-]
-
-TRAIN_GOTO_PREVIOUS = [
-    "바로 이전 위치로 돌아가",
-    "직전 위치로 복귀해줘",
-    "방금 이동하기 전 위치로 돌아가",
-    "이전 위치로 되돌아가",
-    "돌아서 직전 위치로 가",
-    "바로 전 위치로 복귀해",
-]
-
-TRAIN_GOTO_FIRST = [
-    "처음 위치로 직선으로 돌아가",
-    "복귀해서 최초 출발지로 와",
-    "처음 이륙했던 위치로 일직선으로 돌아가",
-    "원점으로 바로 돌아가",
-    "홈 위치로 복귀해",
-    "돌아서 출발했던 위치로 와",
-]
-
-TRAIN_REVERSE = [
-    "왔던 길 그대로 되돌아가줘",
-    "이동했던 경로를 역순으로 돌아가",
-    "지금까지 온 경로를 거꾸로 따라가",
-    "방금까지 이동한 경로를 되짚어 돌아가",
-    "왔던 경로 그대로 출발 방향으로 돌아가",
-    "역순으로 이동 경로를 복귀해",
-]
-
-TRAIN_FORWARD = m(
-    "앞으로 {dist}미터 전진해",
-    "{dist}m 앞으로 가줘",
-    "전방으로 {dist}m 이동해",
-    "지금 바라보는 방향으로 {dist}미터 가라",
-    "정면으로 {dist}m만 나아가",
-    "앞으로 {dist_kor}미터 가",           # 한글 수사 노출 (train)
-) + cm(
-    "앞으로 {dist}cm만 가줘",
-)
-
-TRAIN_BACK = m(
-    "뒤로 {dist}m 물러나 줘",
-    "{dist}미터 후진해",
-    "후방으로 {dist}m 이동해",
-    "{dist}미터 지금 바라보는 반대쪽으로 가라",
-    "뒤로 {dist_kor}미터 물러나",          # 한글 수사 노출 (train)
-) + cm(
-    "뒤로 {dist}cm만 물러나",
-)
-
-TRAIN_RIGHT = m(
-    "오른쪽으로 {dist}미터 가줘",
-    "{dist}m 우측으로 이동해",
-    "우측으로 {dist}m 가라",
-    "{dist}미터 오른쪽으로 움직여",
-    "오른쪽으로 {dist_kor}미터 가",        # 한글 수사 노출 (train)
-) + cm(
-    "오른쪽으로 {dist}cm만 이동해",
-)
-
-TRAIN_LEFT = m(
-    "왼쪽으로 {dist}m 이동해",
-    "{dist}미터 좌측으로 가줘",
-    "좌측으로 {dist}m 가라",
-    "{dist}미터 왼쪽으로 움직여",
-    "왼쪽으로 {dist_kor}미터 가",          # 한글 수사 노출 (train)
-) + cm(
-    "왼쪽으로 {dist}cm만 이동해",
-)
-
-TRAIN_UP = m(
-    "{dist}미터 더 올라가",
-    "{dist}m 상승 해줘",
-    "고도를 {dist}m 높여라",
-    "위쪽으로 {dist}미터 이동해",
-    "{dist_kor}미터 더 올라가",           # 한글 수사 노출 (train)
-) + cm(
-    "{dist}cm만 더 올라가",
-)
-
-TRAIN_DOWN = m(
-    "아래로 {dist}m 내려가",
-    "{dist}미터 하강 해줘",
-    "고도를 {dist}m 낮춰라",
-    "{dist}미터 밑으로 이동해",
-    "아래로 {dist_kor}미터 내려가",        # 한글 수사 노출 (train)
-) + cm(
-    "{dist}cm만 내려가",
-)
-
-TRAIN_CW = [
-    "오른쪽으로 {angle}도 회전해",
-    "시계 방향으로 {angle}도 돌아",
-    "{angle}도 오른쪽으로 돌려줘",
-    "우측으로 {angle}도 회전해줘",
-    "오른쪽으로 {angle_kor}도 회전해",     # 한글 수사 노출 (train)
-]
-
-TRAIN_CCW = [
-    "왼쪽으로 {angle}도 회전해",
-    "반시계 방향으로 {angle}도 돌아",
-    "{angle}도 왼쪽으로 돌려줘",
-    "좌측으로 {angle}도 회전해줘",
-    "왼쪽으로 {angle_kor}도 회전해",       # 한글 수사 노출 (train)
-]
-
-
-# ============================================================
-# Validation 문장 패턴
-# ============================================================
-
-VAL_TAKEOFF = [
-    "{alt}m까지 드론을 띄워",
-    "드론을 {alt}미터 고도로 올려",
-    "목표 고도를 {alt}m로 해서 이륙해",
-    "{alt}m 상공까지 올라가서 이륙 상태를 유지해",
-    "목표 고도 {alt_kor}미터로 이륙해",    # 한글 수사 노출 (val)
-]
-
-VAL_LAND = [
-    "현재 자리에서 내려서 착륙해",
-    "드론을 지상에 내려줘",
-    "지금 있는 곳에서 착륙 절차를 시작해",
-    "비행을 끝내고 지면으로 내려가",
-]
-
-VAL_GOTO_PREVIOUS = [
-    "한 단계 전 위치로 돌아가",
-    "방금 전 자리로 되돌아가",
-    "직전에 있던 곳으로 이동해",
-    "바로 전 위치를 찾아 돌아가",
-]
-
-VAL_GOTO_FIRST = [
-    "비행을 시작했던 자리로 돌아가",
-    "출발 지점으로 되돌아가",
-    "처음 시작한 곳으로 복귀해",
-    "비행 시작점으로 돌아와",
-]
-
-VAL_REVERSE = [
-    "지금까지 이동한 순서의 반대로 복귀해",
-    "지나온 이동을 반대로 수행해서 돌아가",
-    "현재까지의 이동 경로를 거꾸로 되짚어가",
-    "이동했던 순서를 뒤집어서 출발점 방향으로 가",
-]
-
-VAL_FORWARD = m(
-    "기체를 앞쪽으로 {dist}m 보내",
-    "정면 방향으로 {dist}m 나아가",
-    "전방을 향해 {dist}m 움직여",
-    "앞 방향으로 {dist}미터 이동해",
-    "정면으로 {dist_kor}미터 나아가",      # 한글 수사 노출 (val)
-) + cm(
-    "앞쪽으로 {dist}cm 옮겨",
-)
-
-VAL_BACK = m(
-    "기체를 뒤쪽으로 {dist}m 보내",
-    "후방으로 {dist}m 물러서",
-    "뒤쪽 방향으로 {dist}미터 움직여",
-    "진행 방향 반대로 {dist}m 이동해",
-    "후방으로 {dist_kor}미터 물러서",      # 한글 수사 노출 (val)
-) + cm(
-    "뒤쪽으로 {dist}cm 옮겨",
-)
-
-VAL_RIGHT = m(
-    "기체를 오른편으로 {dist}m 옮겨",
-    "오른편으로 {dist}m 움직여",
-    "우측 방향으로 {dist}미터 보내",
-    "기체를 오른쪽 측면으로 {dist}m 이동해",
-    "우측 방향으로 {dist_kor}미터 보내",   # 한글 수사 노출 (val)
-) + cm(
-    "오른편으로 {dist}cm 옮겨",
-)
-
-VAL_LEFT = m(
-    "기체를 왼편으로 {dist}m 옮겨",
-    "왼편으로 {dist}m 움직여",
-    "좌측 방향으로 {dist}미터 보내",
-    "기체를 왼쪽 측면으로 {dist}m 이동해",
-    "좌측 방향으로 {dist_kor}미터 보내",   # 한글 수사 노출 (val)
-) + cm(
-    "왼편으로 {dist}cm 옮겨",
-)
-
-VAL_UP = m(
-    "기체를 {dist}m 위로 올려",
-    "현재보다 {dist}m 더 높은 곳으로 가",
-    "상대적으로 {dist}m 상승해",
-    "드론을 위쪽으로 {dist}m 이동시켜",
-    "상대적으로 {dist_kor}미터 상승해",    # 한글 수사 노출 (val)
-) + cm(
-    "{dist}cm 위로 올려",
-)
-
-VAL_DOWN = m(
-    "기체를 {dist}m 아래로 내려",
-    "현재보다 {dist}m 낮은 곳으로 가",
-    "상대적으로 {dist}m 하강해",
-    "드론을 아래쪽으로 {dist}m 이동시켜",
-    "상대적으로 {dist_kor}미터 하강해",    # 한글 수사 노출 (val)
-) + cm(
-    "{dist}cm 아래로 내려",
-)
-
-VAL_CW = [
-    "기체를 오른쪽으로 {angle}도 틀어",
-    "진행 방향을 시계 방향으로 {angle}도 바꿔",
-    "우측 방향으로 {angle}도 방향을 전환해",
-    "오른쪽으로 {angle}도 방향을 돌려",
-    "우측 방향으로 {angle_kor}도 방향을 전환해",  # 한글 수사 노출 (val)
-]
-
-VAL_CCW = [
-    "기체를 왼쪽으로 {angle}도 틀어",
-    "진행 방향을 반시계 방향으로 {angle}도 바꿔",
-    "좌측 방향으로 {angle}도 방향을 전환해",
-    "왼쪽으로 {angle}도 방향을 돌려",
-    "좌측 방향으로 {angle_kor}도 방향을 전환해",  # 한글 수사 노출 (val)
-]
-
-
-# ============================================================
-# Test 문장 패턴 (오탈자, 띄어쓰기 오류, 한글 수사, 단위 변형 노이즈)
-# ============================================================
-
-TEST_TAKEOFF = [
-    "드론 {alt}미타높이로 띄어줘",                      # 오탈자 & 붙여쓰기
-    "공중으로{alt}m까지띄워라",                          # 띄어쓰기 없음
-    "지면에서 {alt_kor}미터 높이까지 수직으로 업",       # 한글 수사 (실제 구현됨)
-    "비행고도 {alt}m 설정 후 떠오르기",                  # 변칙적 어미
-]
-
-TEST_LAND = [
-    "비행 멈추구 아래로 착지해라",
-    "기체를지상까지착륙시켜",
-    "현위치에서 땅으로 내려앉아라",
-    "드론 착류캐줘",
-]
-
-TEST_GOTO_PREVIOUS = [
-    "직전위치로 빽해줘",
-    "조금전에 머물렀던데로 돌아가",
-    "방금전 위치 찾아가라",
-    "바로 앞서있던 지점 복귀",
-]
-
-TEST_GOTO_FIRST = [
-    "처음있던데로 빽해",
-    "처음출발지점으로 되돌아가줘",
-    "맨처음 장소로 컴백해라",
-    "비행 시작지점 복귀",
-]
-
-TEST_REVERSE = [
-    "지나온길 그대로 리버스해줘",
-    "지금까지 이동 반대로 재현해서 돌아가",
-    "왔던경로 역순으로 빽",
-    "지나온 길 거꾸로 되짚어가라",
-]
-
-TEST_FORWARD = cm(
-    "앞으로 {dist}센치 이동해",
-) + m(
-    "정면쪽으로 {dist_kor}미터 가라",
-    "앞으로{dist}m전진",
-) + cm(
-    "기수방향 {dist}cm 갓",
-)
-
-TEST_BACK = cm(
-    "뒤로 {dist}센티미터 후진해",
-) + m(
-    "후방으로 {dist_kor}미터 물러나",
-    "뒤쪽으로{dist}m가줘",
-) + cm(
-    "진행반대방향 {dist}cm 퇴각",
-)
-
-TEST_RIGHT = cm(
-    "오른쪽으로 {dist}cm 움직여",
-) + m(
-    "우측으로 {dist_kor}미터 보내기",
-    "오른편으로{dist}미터이동",
-) + cm(
-    "우현 쪽으로 {dist}cm 틀어서 가라",
-)
-
-TEST_LEFT = cm(
-    "왼쪽으로 {dist}cm 가줘",
-) + m(
-    "좌측으로 {dist_kor}미터 이동해",
-    "왼편으로{dist}m가라",
-) + cm(
-    "좌현 방향으로 {dist}cm 이동",
-)
-
-TEST_UP = cm(
-    "위로 {dist}센티 올려",
-) + m(
-    "상공으로 {dist_kor}미터 상승해",
-) + cm(
-    "위쪽으로{dist}cm업",
-    "고도 {dist}cm 올려라",
-)
-
-TEST_DOWN = cm(
-    "아래로 {dist}cm 다운해",
-) + m(
-    "지면쪽으로 {dist_kor}미터 하강",
-) + cm(
-    "아래쪽으로{dist}cm내려가",
-    "고도 {dist}cm 낮춰",
-)
-
-TEST_CW = [
-    "시계방향으로 {angle_kor}도 틀어줘",     # 한글 수사 (실제 구현됨)
-    "오른쪽으로{angle}도회전",
-    "우측으로 {angle}도 꺾어라",
-    "시계방향 {angle}도 턴",
-]
-
-TEST_CCW = [
-    "반시계방향으로 {angle_kor}도 틀어줘",
-    "왼쪽으로{angle}도회전",
-    "좌측으로 {angle}도 꺾어라",
-    "반시계 {angle}도 턴해",
-]
-
-
-# ============================================================
-# Phrase 묶음
-# ============================================================
-
-TRAIN_PHRASES = {
-    "takeoff": TRAIN_TAKEOFF, "land": TRAIN_LAND,
-    "previous": TRAIN_GOTO_PREVIOUS, "first": TRAIN_GOTO_FIRST, "reverse": TRAIN_REVERSE,
-    "forward": TRAIN_FORWARD, "back": TRAIN_BACK, "right": TRAIN_RIGHT, "left": TRAIN_LEFT,
-    "up": TRAIN_UP, "down": TRAIN_DOWN, "cw": TRAIN_CW, "ccw": TRAIN_CCW,
-}
-
-VAL_PHRASES = {
-    "takeoff": VAL_TAKEOFF, "land": VAL_LAND,
-    "previous": VAL_GOTO_PREVIOUS, "first": VAL_GOTO_FIRST, "reverse": VAL_REVERSE,
-    "forward": VAL_FORWARD, "back": VAL_BACK, "right": VAL_RIGHT, "left": VAL_LEFT,
-    "up": VAL_UP, "down": VAL_DOWN, "cw": VAL_CW, "ccw": VAL_CCW,
-}
-
-TEST_PHRASES = {
-    "takeoff": TEST_TAKEOFF, "land": TEST_LAND,
-    "previous": TEST_GOTO_PREVIOUS, "first": TEST_GOTO_FIRST, "reverse": TEST_REVERSE,
-    "forward": TEST_FORWARD, "back": TEST_BACK, "right": TEST_RIGHT, "left": TEST_LEFT,
-    "up": TEST_UP, "down": TEST_DOWN, "cw": TEST_CW, "ccw": TEST_CCW,
-}
-
-
-# ============================================================
-# 기본 명령 생성 (이착륙/히스토리/이동/회전)
-# ============================================================
-
-def generate_basic_dataset(
-    num_loops: int,
-    phrases: dict,
-    typo_prob: float = 0.0,
-    spacing_prob: float = 0.0,
-) -> list:
-    """typo_prob/spacing_prob > 0이면 생성된 문장에 일반화된 오타/붙여쓰기
-    노이즈를 후처리로 씌운다. train/val에 사용해 해당 패턴을 실제로
-    학습하게 하기 위함 — test는 자체 노이즈 템플릿이 있으므로 보통 0으로 둔다."""
-    dataset = []
-    translate_dirs = ["forward", "back", "right", "left", "up", "down"]
-
-    def noisy(text: str) -> str:
-        return apply_train_val_noise(text, typo_prob, spacing_prob)
-
-    for _ in range(num_loops):
-        alt = round(random.uniform(*ALT_RANGE), 1)
-        text = random.choice(phrases["takeoff"]).format(alt=alt, alt_kor=number_to_korean(alt))
-        dataset.append(make_sample(noisy(text), "takeoff", {"altitude": alt}))
-
-        dataset.append(make_sample(noisy(random.choice(phrases["land"])), "land", {}))
-        dataset.append(make_sample(noisy(random.choice(phrases["previous"])), "goto_history", {"recall": "previous"}))
-        dataset.append(make_sample(noisy(random.choice(phrases["first"])), "goto_history", {"recall": "first"}))
-        dataset.append(make_sample(noisy(random.choice(phrases["reverse"])), "reverse_plan", {}))
-
-        for _ in range(MOVES_PER_LOOP):
-            if random.random() < ROTATE_PROB:
-                direction = random.choice(["cw", "ccw"])
-                text, args = make_rotate_sample(direction, phrases[direction])
-            else:
-                direction = random.choice(translate_dirs)
-                text, args = make_translate_sample(direction, phrases[direction])
-            dataset.append(make_sample(noisy(text), "move", args))
-
-    random.shuffle(dataset)
-    return dataset
-
-
-# ============================================================
-# 복합 명령 (한 문장에 tool_call 2개)
-# ============================================================
-
-COMPOUND_PATTERNS = [
-    {
-        "vars": ["dist"],
-        "template": "{dist}미터 앞으로 가고 착륙해",
-        "build": lambda v: [
-            ("move", {"dx": v["dist"], "dy": 0.0, "dz": 0.0, "d_yaw": 0.0}),
-            ("land", {}),
-        ],
-    },
-    {
-        "vars": ["alt", "angle"],
-        "template": "고도 {alt}m로 이륙한 다음 오른쪽으로 {angle}도 회전해",
-        "build": lambda v: [
-            ("takeoff", {"altitude": v["alt"]}),
-            ("move", {"dx": 0.0, "dy": 0.0, "dz": 0.0, "d_yaw": -v["angle"]}),
-        ],
-    },
-    {
-        "vars": [],
-        "template": "처음 위치로 돌아간 후 착륙해",
-        "build": lambda v: [
-            ("goto_history", {"recall": "first"}),
-            ("land", {}),
-        ],
-    },
-    {
-        "vars": ["dist", "dist2"],
-        "template": "{dist}m 뒤로 물러난 다음 {dist2}m 위로 올라가",
-        "build": lambda v: [
-            ("move", {"dx": -v["dist"], "dy": 0.0, "dz": 0.0, "d_yaw": 0.0}),
-            ("move", {"dx": 0.0, "dy": 0.0, "dz": v["dist2"], "d_yaw": 0.0}),
-        ],
-    },
-    {
-        "vars": ["angle", "dist"],
-        "template": "왼쪽으로 {angle}도 돌고 {dist}미터 전진해",
-        "build": lambda v: [
-            ("move", {"dx": 0.0, "dy": 0.0, "dz": 0.0, "d_yaw": v["angle"]}),
-            ("move", {"dx": v["dist"], "dy": 0.0, "dz": 0.0, "d_yaw": 0.0}),
-        ],
-    },
-]
-
-
-def generate_compound_dataset(num_samples: int) -> list:
-    dataset = []
-    for _ in range(num_samples):
-        pattern = random.choice(COMPOUND_PATTERNS)
-        values = {}
-        for var in pattern["vars"]:
-            if var.startswith("dist"):
-                values[var] = round(random.uniform(*DIST_RANGE_M), 1)
-            elif var.startswith("angle"):
-                values[var] = int(round(random.uniform(*ANGLE_RANGE)))
-            elif var.startswith("alt"):
-                values[var] = round(random.uniform(*ALT_RANGE), 1)
-        text = pattern["template"].format(**values)
-        calls = pattern["build"](values)
-        dataset.append(make_multi_call_sample(text, calls))
-    return dataset
-
-
-# ============================================================
-# 스코프 밖 요청 (tool_call 없이 거절)
-# ============================================================
-
-OUT_OF_SCOPE_PHRASES = [
-    "오늘 날씨 어때?",
-    "노래 좀 틀어줘",
-    "커피 한 잔 타줘",
-    "지금 몇 시야?",
-    "옆방 불 좀 꺼줘",
-    "심심한데 농담 하나 해줘",
-    "주식 시세 좀 알려줘",
-    "라면 끓이는 법 알려줘",
-]
-
-REFUSAL_TEXT = (
-    "죄송하지만 저는 드론 비행 제어(이륙, 착륙, 이동, 회전, 이전/최초 위치 복귀)만 "
-    "수행할 수 있어요. 요청하신 내용은 처리할 수 없습니다."
-)
-
-
-def generate_negative_dataset(num_samples: int) -> list:
-    dataset = []
-    for _ in range(num_samples):
-        phrase = random.choice(OUT_OF_SCOPE_PHRASES)
-        dataset.append(make_refusal_sample(phrase, REFUSAL_TEXT))
-    return dataset
-
-
-# ============================================================
-# 저장 & QA 통계
-# ============================================================
-
-def save_jsonl(dataset: list, output_file: str):
-    output_path = Path(OUTPUT_PATH) / output_file
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        for item in dataset:
-            f.write(json.dumps(item, ensure_ascii=False) + "\n")
-    print(f"📄 저장 위치: {output_path.resolve()}")
-
-
-def print_label_distribution(dataset: list, split_name: str):
-    """샘플별 assistant 응답에서 어떤 tool이 몇 번 나왔는지 집계.
-    복합 명령은 포함된 tool 각각을 세고, 거절 응답은 'no_tool_call'로 센다."""
-    counter = Counter()
-    for item in dataset:
-        content = item["messages"][-1]["content"]
-        if "<tool_call>" not in content:
-            counter["no_tool_call"] += 1
-            continue
-        for line in content.split("<tool_call>")[1:]:
-            call_json = line.split("</tool_call>")[0]
-            try:
-                name = json.loads(call_json)["name"]
-                counter[name] += 1
-            except (json.JSONDecodeError, KeyError):
-                counter["parse_error"] += 1
-    print(f"  [{split_name}] 라벨 분포: {dict(counter)}")
-
-
-# ============================================================
-# 실행
-# ============================================================
-
-if __name__ == "__main__":
-    # test는 자체 노이즈 템플릿을 이미 갖고 있으므로 0으로 둔다.
-    # train/val은 같은 "종류"의 노이즈를 겪어보되, 구체적 오타/문장은 test와
-    # 겹치지 않게 해서 "암기"가 아니라 "패턴 일반화"를 학습/평가하게 한다.
-    NOISE_PROB = {
-        "train": {"typo": 0.15, "spacing": 0.20},
-        "val": {"typo": 0.15, "spacing": 0.20},
-        "test": {"typo": 0.0, "spacing": 0.0},
-    }
-
-    splits = {
-        "train": (NUM_TRAIN, TRAIN_PHRASES),
-        "val": (NUM_VAL, VAL_PHRASES),
-        "test": (NUM_TEST, TEST_PHRASES),
-    }
-
-    results = {}
-    for split_name, (num_loops, phrases) in splits.items():
-        noise = NOISE_PROB[split_name]
-        dataset = generate_basic_dataset(num_loops, phrases, typo_prob=noise["typo"], spacing_prob=noise["spacing"])
-        dataset += generate_compound_dataset(NUM_COMPOUND[split_name])
-        dataset += generate_negative_dataset(NUM_NEGATIVE[split_name])
-        random.shuffle(dataset)
-        results[split_name] = dataset
-        save_jsonl(dataset, f"{split_name}.jsonl")
-
-    total = sum(len(d) for d in results.values())
-    print(f"\n✅ Train: {len(results['train'])}개")
-    print(f"🧪 Validation: {len(results['val'])}개")
-    print(f"📝 Test: {len(results['test'])}개")
-    print(f"📦 전체: {total}개\n")
-
-    print("📊 클래스 분포 점검 (불균형 확인용):")
-    for split_name, dataset in results.items():
-        print_label_distribution(dataset, split_name)
+def generate_action(split,action):
+    if action in ("land","previous","first","reverse"):
+        t=random.choice(TRAIN_COMMON[action] if split=="train" else VAL_EXTRA[action] if split=="val" else TEST_OOD[action])
+        if split=="test":t=add_test_style(t)
+        elif split=="train":t=add_train_noise(t)
+        tool={"land":"land","previous":"goto_history","first":"goto_history","reverse":"reverse_plan"}[action]
+        if action=="land" or action=="reverse":
+            args={}
+        else:
+            args={"recall":action}
+        return t,tool,args
+
+    if action=="takeoff":
+        a=altitude()
+        v=random.choice(number_variants(a,"m",split))
+        t=random.choice(TRAIN_COMMON[action] if split=="train" else VAL_EXTRA[action] if split=="val" else TEST_OOD[action]).format(v=v)
+        if split=="test":t=add_test_style(t)
+        elif split=="train":t=add_train_noise(t)
+        return t,"takeoff",{"altitude":a}
+
+    if action in DIRS:
+        raw,value,unit=dist()
+        v=random.choice(number_variants(raw,unit,split))
+        t=random.choice(TRAIN_COMMON[action] if split=="train" else VAL_EXTRA[action] if split=="val" else TEST_OOD[action]).format(v=v)
+        if split=="test":t=add_test_style(t)
+        elif split=="train":t=add_train_noise(t)
+        return t,*make_move_call(action,value)
+
+    a=angle();k=number_to_korean(a)
+    if split=="train":t=random.choice(TRAIN_COMMON[action]).format(a=random.choice([a,k]))
+    elif split=="val":t=random.choice(VAL_EXTRA[action]).format(a=random.choice([a,k]))
+    else:t=random.choice(TEST_OOD[action]).format(a=random.choice([a,k]));t=add_test_style(t)
+    if split=="train":t=add_train_noise(t)
+    yaw=-a if action=="cw" else a
+    return t,"move",{"dx":0.0,"dy":0.0,"dz":0.0,"d_yaw":yaw}
+
+# 단일 명령
+def basic(n,split,start_index=0):
+    out=[]
+    for i in range(n):
+        action=ACTION_ORDER[(start_index+i)%len(ACTION_ORDER)]
+        text,tool,args=generate_action(split,action)
+        out.append(make_sample(text,tool,args))
+    return out
+
+# 복합 명령
+def compound(n,split,start_index=0):
+    out=[]
+    patterns=[
+        ["takeoff","move"],["takeoff","move","land"],
+        ["takeoff","move","move"],["move","move"],
+        ["move","move","land"],["takeoff","move","move","land"]
+    ]
+    moves=["forward","back","left","right","up","down","cw","ccw"]
+    connectors={"train":TRAIN_CONNECTORS,"val":VAL_CONNECTORS,"test":TEST_CONNECTORS}[split]
+
+    for _ in range(n):
+        chosen=random.choice(patterns)
+        chosen=[random.choice(moves) if x=="move" else x for x in chosen]
+        for i in range(1,len(chosen)):
+            while chosen[i]==chosen[i-1] and chosen[i] in moves:
+                chosen[i]=random.choice(moves)
+
+        texts=[];calls=[]
+        for a in chosen:
+            text,tool,args=generate_action(split,a)
+            texts.append(text);calls.append((tool,args))
+
+        text=random.choice(connectors).join(texts)
+        if split=="test" and random.random()<.8:
+            text=add_test_style(text)
+        elif split=="train":
+            text=add_train_noise(text)
+
+        out.append(make_multi(text,calls))
+    return out
+
+def negative(n,split,start_index=0):
+    pool={"train":NEG_TRAIN,"val":NEG_VAL,"test":NEG_TEST}[split]
+    out=[];seen=set();tries=0
+    while len(out)<n and tries<n*100:
+        t=random.choice(pool)
+        if split=="train":t=add_train_noise(t)
+        elif split=="test":t=add_test_style(t)
+        t=normalize(t);tries+=1
+        if t in seen:continue
+        seen.add(t);out.append(make_refusal(t))
+    if len(out)<n:raise RuntimeError(f"{split} negative 생성 실패: {len(out)}/{n}")
+    return out
+
+def normalize(s):
+    return " ".join(s.split()).strip()
+
+# 중복 제거
+def generate_deduplicated_set(generator,n,split):
+    out=[];seen=set();tries=0
+    while len(out)<n and tries<n*100:
+        sample=generator(1,split,start_index=tries)[0];tries+=1
+        text=normalize(sample["messages"][1]["content"])
+        if text in seen:continue
+        seen.add(text);out.append(sample)
+    if len(out)<n:raise RuntimeError(f"{split} 중복 제거 후 {n}개 생성 실패: {len(out)}개")
+    return out
+
+def sample_texts(data):
+    return {normalize(x["messages"][1]["content"]) for x in data}
+
+def remove_cross_split_duplicates(datasets):
+    splits=["train","val","test"]
+    sets={s:sample_texts(datasets[s]) for s in splits}
+    for i,a in enumerate(splits):
+        for b in splits[i+1:]:
+            dup=sets[a]&sets[b]
+            if dup:raise RuntimeError(f"{a}/{b} 데이터 중복 발견: {len(dup)}개\n{next(iter(dup))}")
+
+def save_jsonl(data,path):
+    Path(path).parent.mkdir(parents=True,exist_ok=True)
+    with open(path,"w",encoding="utf-8") as f:
+        for x in data:f.write(json.dumps(x,ensure_ascii=False)+"\n")
+
+def print_label_distribution(data,name):
+    c=Counter()
+    for x in data:
+        s=x["messages"][2]["content"]
+        if "지원하지 않는 명령" in s:c["negative"]+=1
+        else:
+            for action in ["takeoff","land","goto_history","reverse_plan","move"]:
+                if f'"name": "{action}"' in s:c[action]+=1
+    print(f"\n[{name}] {len(data)} samples")
+    print(dict(c))
+
+def print_examples(data,name,k=5):
+    print(f"\n===== {name} examples =====")
+    for x in random.sample(data,min(k,len(data))):
+        print("USER:",x["messages"][1]["content"])
+        print("OUT :",x["messages"][2]["content"])
+        print()
+
+if __name__=="__main__":
+    datasets={}
+    for split,n in [("train",NUM_TRAIN),("val",NUM_VAL),("test",NUM_TEST)]:
+        basic_data=generate_deduplicated_set(basic,n,split)
+        compound_data=generate_deduplicated_set(compound,NUM_COMPOUND[split],split)
+        negative_data=negative(NUM_NEGATIVE[split],split)
+        data=basic_data+compound_data+negative_data
+        random.shuffle(data)
+        datasets[split]=data
+
+    remove_cross_split_duplicates(datasets)
+
+    for split,data in datasets.items():
+        save_jsonl(data,f"{OUTPUT_PATH}/{split}.jsonl")
+        print_label_distribution(data,split)
+        print_examples(data,split)
+
+    print("\n========================================")
+    print("Dataset generation complete")
+    print(f"Train: {len(datasets['train'])}")
+    print(f"Val  : {len(datasets['val'])}")
+    print(f"Test : {len(datasets['test'])}")
+    print(f"Output: {OUTPUT_PATH}/")
+    print("========================================")
