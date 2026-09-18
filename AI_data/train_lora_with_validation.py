@@ -11,10 +11,10 @@ from trl import SFTConfig,SFTTrainer
 MODEL_ID="../models/Qwen3-1.7B"
 TRAIN_DATASET_PATH="./dataset/train.jsonl"
 VAL_DATASET_PATH="./dataset/val.jsonl"
-TEST_DATASET_PATH="./dataset/test.jsonl"
 OUTPUT_DIR="../models/finetuned_qwen3-1.7B_drone_lora"
 
 SEED=42
+
 def set_seed(seed=42):
     random.seed(seed)
     np.random.seed(seed)
@@ -41,34 +41,31 @@ print(f"BF16 지원     : {bf16_supported}")
 print("="*60)
 
 # 데이터셋
-print("\n[1/6] 데이터셋 로딩 중...")
+print("\n[1/5] 데이터셋 로딩 중...")
 
 dataset=load_dataset("json",data_files={
     "train":TRAIN_DATASET_PATH,
-    "validation":VAL_DATASET_PATH,
-    "test":TEST_DATASET_PATH
+    "validation":VAL_DATASET_PATH
 })
 
 train_dataset=dataset["train"]
 valid_dataset=dataset["validation"]
-test_dataset=dataset["test"]
 
 print(f"Train      : {len(train_dataset)}")
 print(f"Validation : {len(valid_dataset)}")
-print(f"Test       : {len(test_dataset)}")
 
 # Tokenizer
-print("\n[2/6] Tokenizer 로딩 중...")
+print("\n[2/5] Tokenizer 로딩 중...")
 
 tokenizer=AutoTokenizer.from_pretrained(MODEL_ID)
 
 if tokenizer.pad_token is None:
     tokenizer.pad_token=tokenizer.eos_token
 
-print("[2/6] Tokenizer 로딩 완료")
+print("[2/5] Tokenizer 로딩 완료")
 
 # 모델
-print("\n[3/6] 모델 로딩 중...")
+print("\n[3/5] 모델 로딩 중...")
 
 if torch.cuda.is_available():
     model_dtype=torch.bfloat16 if bf16_supported else torch.float16
@@ -83,10 +80,10 @@ model=AutoModelForCausalLM.from_pretrained(
 
 model.config.use_cache=False
 
-print("[3/6] 모델 로딩 완료")
+print("[3/5] 모델 로딩 완료")
 
 # LoRA
-print("\n[4/6] LoRA 설정 중...")
+print("\n[4/5] LoRA 설정 중...")
 
 lora_config=LoraConfig(
     r=16,
@@ -100,10 +97,10 @@ lora_config=LoraConfig(
     task_type="CAUSAL_LM"
 )
 
-print("[4/6] LoRA 설정 완료")
+print("[4/5] LoRA 설정 완료")
 
 # Trainer
-print("\n[5/6] Trainer 설정 중...")
+print("\n[5/5] Trainer 설정 중...")
 
 training_args=SFTConfig(
     output_dir=OUTPUT_DIR,
@@ -163,22 +160,8 @@ for key,value in eval_result.items():
     if isinstance(value,(int,float)):
         print(f"{key}: {value}")
 
-# Test
-print("\n"+"="*60)
-print("최종 Test 평가")
-print("="*60)
-
-test_result=trainer.evaluate(
-    eval_dataset=test_dataset,
-    metric_key_prefix="test"
-)
-
-for key,value in test_result.items():
-    if isinstance(value,(int,float)):
-        print(f"{key}: {value}")
-
 # 모델 저장
-print("\n[6/6] 모델 저장 중...")
+print("\n모델 저장 중...")
 
 os.makedirs(OUTPUT_DIR,exist_ok=True)
 
@@ -188,11 +171,9 @@ tokenizer.save_pretrained(OUTPUT_DIR)
 metrics={
     "train":train_result.metrics,
     "validation":eval_result,
-    "test":test_result,
     "dataset_size":{
         "train":len(train_dataset),
-        "validation":len(valid_dataset),
-        "test":len(test_dataset)
+        "validation":len(valid_dataset)
     }
 }
 
@@ -207,9 +188,7 @@ print("학습 완료!")
 print(f"LoRA 모델        : {OUTPUT_DIR}")
 print(f"Train 데이터     : {TRAIN_DATASET_PATH}")
 print(f"Validation 데이터: {VAL_DATASET_PATH}")
-print(f"Test 데이터      : {TEST_DATASET_PATH}")
 print("- Validation은 매 epoch마다 수행됨")
 print("- Validation Loss가 가장 좋은 모델이 최종 모델로 복원됨")
 print("- Validation 개선이 없으면 Early Stopping 발생")
-print("- Test는 학습에 사용하지 않고 마지막에 1회 평가")
 print("="*60)
