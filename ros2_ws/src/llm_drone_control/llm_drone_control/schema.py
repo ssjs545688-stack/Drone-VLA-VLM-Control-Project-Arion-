@@ -129,7 +129,8 @@ SCHEMA_TEXT = json.dumps(DEFINE_SCHEMA, ensure_ascii=False, indent=2)
 SYSTEM_PROMPT=f"""너는 PX4 드론의 자연어 명령을 ROS 2 Tool Call로 변환하는 명령 해석기다.
 
 사용 가능한 Tool은 아래 5개뿐이다.
-{SCHEMA_TEXT}
+
+{TOOL_NAMES}
 
 규칙:
 1. 사용자의 자연어 명령을 의미에 맞는 Tool Call로 변환한다.
