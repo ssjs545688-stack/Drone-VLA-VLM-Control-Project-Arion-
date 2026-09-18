@@ -12,9 +12,6 @@ __pycache__/
 models/Qwen3-0.6B
 models/Qwen3-1.7B
 
-# Data
-train/train.jsonl
-
 build/
 install/
 log/
