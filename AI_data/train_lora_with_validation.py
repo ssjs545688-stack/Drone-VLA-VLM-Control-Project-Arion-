@@ -8,11 +8,11 @@ from peft import LoraConfig
 from trl import SFTConfig,SFTTrainer
 
 # 경로
-MODEL_ID="../models/Qwen3-0.6B"
+MODEL_ID="../models/Qwen3-1.7B"
 TRAIN_DATASET_PATH="./dataset/train.jsonl"
 VAL_DATASET_PATH="./dataset/val.jsonl"
 TEST_DATASET_PATH="./dataset/test.jsonl"
-OUTPUT_DIR="../models/finetuned_qwen3_drone_lora"
+OUTPUT_DIR="../models/finetuned_qwen3-1.7B_drone_lora"
 
 SEED=42
 def set_seed(seed=42):
@@ -65,20 +65,6 @@ tokenizer=AutoTokenizer.from_pretrained(MODEL_ID)
 if tokenizer.pad_token is None:
     tokenizer.pad_token=tokenizer.eos_token
 
-def format_chat(example):
-    return {
-        "text": tokenizer.apply_chat_template(
-            example["messages"],
-            tokenize=False,
-            enable_thinking=False,
-            add_generation_prompt=False
-        )
-    }
-
-train_dataset=train_dataset.map(format_chat)
-valid_dataset=valid_dataset.map(format_chat)
-test_dataset=test_dataset.map(format_chat)
-
 print("[2/6] Tokenizer 로딩 완료")
 
 # 모델
@@ -124,9 +110,9 @@ training_args=SFTConfig(
     num_train_epochs=5,
     per_device_train_batch_size=4,
     gradient_accumulation_steps=2,
-    learning_rate=2e-4,
+    learning_rate=1e-4,
     lr_scheduler_type="cosine",
-    warmup_steps=100,
+    warmup_ratio=0.05,
     eval_strategy="epoch",
     save_strategy="epoch",
     save_total_limit=2,
@@ -139,7 +125,6 @@ training_args=SFTConfig(
     bf16=torch.cuda.is_available() and bf16_supported,
     max_length=512,
     packing=False,
-    dataset_text_field="text",
     report_to="none",
     seed=SEED
 )
