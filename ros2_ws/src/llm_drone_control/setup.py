@@ -30,6 +30,7 @@ setup(
         'console_scripts': [
             "llm_service = llm_drone_control.llm_service:main",
             "flight_controller = llm_drone_control.flight_controller:main",
+            "stt_node = llm_drone_control.stt_node:main",
         ],
     },
 )
