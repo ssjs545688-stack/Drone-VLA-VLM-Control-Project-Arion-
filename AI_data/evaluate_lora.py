@@ -4,17 +4,17 @@ import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM,AutoTokenizer
 from peft import PeftModel
-from llm_drone_control.schema import SYSTEM_PROMPT
-
+from llm_drone_control.schema import DEFINE_SCHEMA, SYSTEM_PROMPT
 
 # 경로
-MODEL_ID="../models/Qwen3-0.6B"
+MODEL_ID="../models/Qwen3-1.7B"
 TEST_DATASET_PATH="./dataset/test.jsonl"
-LORA_DIR="../models/finetuned_qwen3_drone_lora"
+LORA_DIR="../models/finetuned_qwen3-1.7B_drone_lora"
 RESULT_PATH="./evaluation_results.json"
 
 MAX_NEW_TOKENS=256
 DO_SAMPLE=False
+
 
 def load_jsonl(path):
     data=[]
@@ -44,33 +44,46 @@ def extract_assistant_text(item):
     return ""
 
 
-def parse_tool_call(text):
+def parse_tool_calls(text):
     if not text:
-        return None
+        return []
 
-    match=re.search(r"<tool_call>\s*(.*?)\s*</tool_call>",text,re.DOTALL)
-    candidate=match.group(1).strip() if match else text.strip()
+    matches=re.findall(
+        r"<tool_call>\s*(.*?)\s*</tool_call>",
+        text,
+        re.DOTALL
+    )
 
-    json_match=re.search(r"\{.*\}",candidate,re.DOTALL)
-    if not json_match:
-        return None
+    if not matches:
+        matches=[text.strip()]
 
-    try:
-        obj=json.loads(json_match.group(0))
-    except json.JSONDecodeError:
-        return None
+    calls=[]
 
-    if not isinstance(obj,dict):
-        return None
+    for candidate in matches:
+        json_match=re.search(r"\{.*\}",candidate,re.DOTALL)
 
-    arguments=obj.get("arguments",{})
-    if not isinstance(arguments,dict):
-        arguments={}
+        if not json_match:
+            continue
 
-    return {
-        "name":obj.get("name"),
-        "arguments":arguments
-    }
+        try:
+            obj=json.loads(json_match.group(0))
+        except json.JSONDecodeError:
+            continue
+
+        if not isinstance(obj,dict):
+            continue
+
+        arguments=obj.get("arguments",{})
+
+        if not isinstance(arguments,dict):
+            arguments={}
+
+        calls.append({
+            "name":obj.get("name"),
+            "arguments":arguments
+        })
+
+    return calls
 
 
 def get_dtype():
@@ -82,7 +95,10 @@ def get_dtype():
 def load_base_model():
     print("\n[1/2] Base Model 로딩 중...")
 
-    tokenizer=AutoTokenizer.from_pretrained(MODEL_ID,trust_remote_code=True)
+    tokenizer=AutoTokenizer.from_pretrained(
+        MODEL_ID,
+        trust_remote_code=True
+    )
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token=tokenizer.eos_token
@@ -95,6 +111,7 @@ def load_base_model():
     )
 
     model.eval()
+
     print("Base Model 로딩 완료!")
     return tokenizer,model
 
@@ -102,7 +119,10 @@ def load_base_model():
 def load_lora_model():
     print("\n[2/2] Base + LoRA Model 로딩 중...")
 
-    tokenizer=AutoTokenizer.from_pretrained(LORA_DIR,trust_remote_code=True)
+    tokenizer=AutoTokenizer.from_pretrained(
+        LORA_DIR,
+        trust_remote_code=True
+    )
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token=tokenizer.eos_token
@@ -114,7 +134,11 @@ def load_lora_model():
         trust_remote_code=True
     )
 
-    model=PeftModel.from_pretrained(base_model,LORA_DIR)
+    model=PeftModel.from_pretrained(
+        base_model,
+        LORA_DIR
+    )
+
     model.eval()
 
     print("Base + LoRA Model 로딩 완료!")
@@ -129,6 +153,7 @@ def build_prompt(tokenizer,user_text):
 
     return tokenizer.apply_chat_template(
         messages,
+        tools=DEFINE_SCHEMA,
         tokenize=False,
         add_generation_prompt=True,
         enable_thinking=False
@@ -187,17 +212,28 @@ def arguments_exact_match(true_args,pred_args):
     )
 
 
-def tool_call_exact_match(true_call,pred_call):
-    if true_call is None or pred_call is None:
+def tool_call_equal(true_call,pred_call):
+    if true_call["name"]!=pred_call["name"]:
         return False
 
-    return (
-        true_call["name"]==pred_call["name"]
-        and arguments_exact_match(
-            true_call["arguments"],
-            pred_call["arguments"]
-        )
+    return arguments_exact_match(
+        true_call["arguments"],
+        pred_call["arguments"]
     )
+
+
+def tool_calls_exact_match(true_calls,pred_calls):
+    if len(true_calls)!=len(pred_calls):
+        return False
+
+    return all(
+        tool_call_equal(true_call,pred_call)
+        for true_call,pred_call in zip(true_calls,pred_calls)
+    )
+
+
+def is_refusal(true_calls):
+    return len(true_calls)==0
 
 
 def calculate_metrics(results):
@@ -206,14 +242,31 @@ def calculate_metrics(results):
     if total==0:
         return {
             "total":0,
+            "tool_call_samples":0,
+            "refusal_samples":0,
             "parse_rate":0,
             "tool_name_accuracy":0,
             "argument_accuracy":0,
             "exact_match_accuracy":0,
+            "refusal_accuracy":0,
             "parameter_accuracy":{}
         }
 
-    parse_count=0
+    tool_call_results=[
+        r for r in results
+        if not is_refusal(r["true_calls"])
+    ]
+
+    refusal_results=[
+        r for r in results
+        if is_refusal(r["true_calls"])
+    ]
+
+    parse_count=sum(
+        1 for r in results
+        if r["predicted_calls"] or is_refusal(r["true_calls"])
+    )
+
     tool_correct=0
     argument_correct=0
     exact_correct=0
@@ -221,50 +274,93 @@ def calculate_metrics(results):
     parameter_total={}
     parameter_correct={}
 
-    for r in results:
-        true_call=r["true_call"]
-        pred_call=r["predicted_call"]
+    for r in tool_call_results:
+        true_calls=r["true_calls"]
+        pred_calls=r["predicted_calls"]
 
-        if pred_call is not None:
-            parse_count+=1
+        if len(true_calls)==len(pred_calls):
+            names_correct=True
+            args_correct=True
 
-        if true_call is None or pred_call is None:
-            continue
+            for true_call,pred_call in zip(true_calls,pred_calls):
+                if true_call["name"]!=pred_call["name"]:
+                    names_correct=False
 
-        if true_call["name"]==pred_call["name"]:
-            tool_correct+=1
+                if not arguments_exact_match(
+                    true_call["arguments"],
+                    pred_call["arguments"]
+                ):
+                    args_correct=False
 
-        if arguments_exact_match(
-            true_call["arguments"],
-            pred_call["arguments"]
+                for key,true_value in true_call["arguments"].items():
+                    parameter_total[key]=parameter_total.get(key,0)+1
+
+                    if (
+                        key in pred_call["arguments"]
+                        and values_equal(
+                            true_value,
+                            pred_call["arguments"][key]
+                        )
+                    ):
+                        parameter_correct[key]=parameter_correct.get(key,0)+1
+
+            if names_correct:
+                tool_correct+=1
+
+            if args_correct:
+                argument_correct+=1
+
+        if tool_calls_exact_match(
+            true_calls,
+            pred_calls
         ):
-            argument_correct+=1
-
-        if tool_call_exact_match(true_call,pred_call):
             exact_correct+=1
 
-        true_args=true_call["arguments"]
-        pred_args=pred_call["arguments"]
+    refusal_correct=0
 
-        for key,true_value in true_args.items():
-            parameter_total[key]=parameter_total.get(key,0)+1
+    for r in refusal_results:
+        if is_refusal(r["predicted_calls"]):
+            refusal_correct+=1
 
-            if key in pred_args and values_equal(
-                true_value,pred_args[key]
-            ):
-                parameter_correct[key]=parameter_correct.get(key,0)+1
+    exact_match_total=0
+
+    for r in results:
+        if tool_calls_exact_match(
+            r["true_calls"],
+            r["predicted_calls"]
+        ):
+            exact_match_total+=1
 
     parameter_accuracy={
         key:parameter_correct.get(key,0)/count
         for key,count in parameter_total.items()
     }
 
+    tool_total=len(tool_call_results)
+    refusal_total=len(refusal_results)
+
     return {
         "total":total,
+        "tool_call_samples":tool_total,
+        "refusal_samples":refusal_total,
         "parse_rate":parse_count/total,
-        "tool_name_accuracy":tool_correct/total,
-        "argument_accuracy":argument_correct/total,
-        "exact_match_accuracy":exact_correct/total,
+        "tool_name_accuracy":(
+            tool_correct/tool_total
+            if tool_total else 0
+        ),
+        "argument_accuracy":(
+            argument_correct/tool_total
+            if tool_total else 0
+        ),
+        "exact_match_accuracy":exact_match_total/total,
+        "tool_call_exact_match_accuracy":(
+            exact_correct/tool_total
+            if tool_total else 0
+        ),
+        "refusal_accuracy":(
+            refusal_correct/refusal_total
+            if refusal_total else 0
+        ),
         "parameter_accuracy":parameter_accuracy
     }
 
@@ -280,7 +376,7 @@ def evaluate_model(model_name,model,tokenizer,test_data):
         user_text=extract_user_text(item)
         assistant_text=extract_assistant_text(item)
 
-        true_call=parse_tool_call(assistant_text)
+        true_calls=parse_tool_calls(assistant_text)
 
         try:
             predicted_text=generate(
@@ -288,19 +384,20 @@ def evaluate_model(model_name,model,tokenizer,test_data):
                 tokenizer,
                 user_text
             )
-            predicted_call=parse_tool_call(predicted_text)
+
+            predicted_calls=parse_tool_calls(predicted_text)
 
         except Exception as e:
             predicted_text=f"[ERROR] {e}"
-            predicted_call=None
+            predicted_calls=[]
 
         results.append({
             "index":idx,
             "input":user_text,
             "expected":assistant_text,
             "prediction":predicted_text,
-            "true_call":true_call,
-            "predicted_call":predicted_call
+            "true_calls":true_calls,
+            "predicted_calls":predicted_calls
         })
 
     return calculate_metrics(results),results
@@ -309,13 +406,19 @@ def evaluate_model(model_name,model,tokenizer,test_data):
 def print_metrics(name,metrics):
     print(f"\n{name}")
     print("-"*40)
-    print(f"총 테스트 수       : {metrics['total']}")
-    print(f"JSON 파싱 성공률   : {metrics['parse_rate']*100:.2f}%")
-    print(f"Tool Name 정확도   : {metrics['tool_name_accuracy']*100:.2f}%")
-    print(f"Argument 정확도    : {metrics['argument_accuracy']*100:.2f}%")
-    print(f"전체 Exact Match   : {metrics['exact_match_accuracy']*100:.2f}%")
+
+    print(f"총 테스트 수              : {metrics['total']}")
+    print(f"Tool Call 테스트          : {metrics['tool_call_samples']}")
+    print(f"Refusal 테스트            : {metrics['refusal_samples']}")
+    print(f"JSON 파싱/형식 성공률     : {metrics['parse_rate']*100:.2f}%")
+    print(f"Tool Name 정확도          : {metrics['tool_name_accuracy']*100:.2f}%")
+    print(f"Argument 정확도           : {metrics['argument_accuracy']*100:.2f}%")
+    print(f"Tool Call Exact Match      : {metrics['tool_call_exact_match_accuracy']*100:.2f}%")
+    print(f"Refusal 정확도             : {metrics['refusal_accuracy']*100:.2f}%")
+    print(f"전체 Exact Match           : {metrics['exact_match_accuracy']*100:.2f}%")
 
     print("\nParameter별 정확도")
+
     for key,value in metrics["parameter_accuracy"].items():
         print(f"  {key:8s}: {value*100:.2f}%")
 
@@ -323,9 +426,9 @@ def print_metrics(name,metrics):
 def print_failures(results,max_items=20):
     failures=[
         r for r in results
-        if not tool_call_exact_match(
-            r["true_call"],
-            r["predicted_call"]
+        if not tool_calls_exact_match(
+            r["true_calls"],
+            r["predicted_calls"]
         )
     ]
 
@@ -344,6 +447,7 @@ def main():
     print("="*70)
 
     print("\n테스트 데이터 로딩 중...")
+
     test_data=load_jsonl(TEST_DATASET_PATH)
 
     print(f"Test 데이터 : {len(test_data)}개")
@@ -359,7 +463,11 @@ def main():
         test_data
     )
 
-    print_metrics("BASE MODEL 결과",base_metrics)
+    print_metrics(
+        "BASE MODEL 결과",
+        base_metrics
+    )
+
     print_failures(base_results)
 
     del base_model
@@ -378,7 +486,11 @@ def main():
         test_data
     )
 
-    print_metrics("BASE + LORA 결과",lora_metrics)
+    print_metrics(
+        "BASE + LORA 결과",
+        lora_metrics
+    )
+
     print_failures(lora_results)
 
     # 비교
@@ -387,21 +499,35 @@ def main():
     print("="*70)
 
     print(
-        f"Tool Name Accuracy : "
+        f"Tool Name Accuracy       : "
         f"{base_metrics['tool_name_accuracy']*100:.2f}%"
         f" -> "
         f"{lora_metrics['tool_name_accuracy']*100:.2f}%"
     )
 
     print(
-        f"Argument Accuracy  : "
+        f"Argument Accuracy        : "
         f"{base_metrics['argument_accuracy']*100:.2f}%"
         f" -> "
         f"{lora_metrics['argument_accuracy']*100:.2f}%"
     )
 
     print(
-        f"Exact Match        : "
+        f"Tool Call Exact Match    : "
+        f"{base_metrics['tool_call_exact_match_accuracy']*100:.2f}%"
+        f" -> "
+        f"{lora_metrics['tool_call_exact_match_accuracy']*100:.2f}%"
+    )
+
+    print(
+        f"Refusal Accuracy         : "
+        f"{base_metrics['refusal_accuracy']*100:.2f}%"
+        f" -> "
+        f"{lora_metrics['refusal_accuracy']*100:.2f}%"
+    )
+
+    print(
+        f"Overall Exact Match      : "
         f"{base_metrics['exact_match_accuracy']*100:.2f}%"
         f" -> "
         f"{lora_metrics['exact_match_accuracy']*100:.2f}%"
@@ -413,7 +539,9 @@ def main():
             "model_id":MODEL_ID,
             "lora_dir":LORA_DIR,
             "test_dataset":TEST_DATASET_PATH,
-            "test_size":len(test_data)
+            "test_size":len(test_data),
+            "max_new_tokens":MAX_NEW_TOKENS,
+            "do_sample":DO_SAMPLE
         },
         "base_model":{
             "metrics":base_metrics,
@@ -425,7 +553,11 @@ def main():
         }
     }
 
-    with open(RESULT_PATH,"w",encoding="utf-8") as f:
+    with open(
+        RESULT_PATH,
+        "w",
+        encoding="utf-8"
+    ) as f:
         json.dump(
             output,
             f,
@@ -433,7 +565,9 @@ def main():
             indent=2
         )
 
-    print(f"\n평가 결과 저장 완료: {RESULT_PATH}")
+    print(
+        f"\n평가 결과 저장 완료: {RESULT_PATH}"
+    )
 
 
 if __name__=="__main__":
