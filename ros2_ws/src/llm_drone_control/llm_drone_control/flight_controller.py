@@ -84,12 +84,15 @@ class FlightController(Node):
         self.nav_state = 0
         self.is_landed = True
 
-        # 비행 제어 상태 머신: IDLE, ARMING, TAKEOFF, HOVER, LAND
+        # 비행 제어 상태 머신: IDLE, ARMING, TAKEOFF, HOVER, MOVE, LAND
         self.flight_state = "IDLE"
         self.target_altitude = 0.0  # 양수 (단위: m)
+        self.target_x = 0.0
+        self.target_y = 0.0
         self.target_z = 0.0         # 실제 계산된 목표 NED z 좌표
+        self.target_yaw = 0.0       # 목표 헤딩 각도 (단위: rad)
         self.heartbeat_counter = 0
-        self.arrival_counter = 0    # 목표 고도 연속 도달 카운터
+        self.arrival_counter = 0    # 목표 도달 연속 카운터
 
         # 10Hz 주기적 제어 루프 타이머
         self.timer = self.create_timer(0.1, self.timer_callback)
@@ -110,7 +113,7 @@ class FlightController(Node):
         current_altitude = -self.current_z
         yaw_deg = math.degrees(self.current_yaw)
         self.get_logger().info(
-            f"📍 [드론 위치] X: {self.current_x:6.2f}m | Y: {self.current_y:6.2f}m | "
+            f"📍 [드론 위치 | 상태: {self.flight_state}] X: {self.current_x:6.2f}m | Y: {self.current_y:6.2f}m | "
             f"고도: {current_altitude:5.2f}m | Yaw: {yaw_deg:6.1f}°",
             throttle_duration_sec=1.0
         )
@@ -146,6 +149,11 @@ class FlightController(Node):
 
         # 명령에 따른 동작 분기
         if func_name == "takeoff":
+            # 🛡️ 안전 가드: 이미 비행 중인 경우 중복 이륙 거부
+            if self.flight_state in ["TAKEOFF", "HOVER", "MOVE"]:
+                self.get_logger().warn(f"⚠️ [명령 거부] 이미 비행 중입니다 (현재 상태: {self.flight_state}).")
+                return
+
             alt = float(args.get("altitude", 2.0))
             self.target_altitude = alt
             # PX4 NED 좌표계: 고도 상승은 -Z 방향 (이륙 지면 기준 -alt)
@@ -155,6 +163,39 @@ class FlightController(Node):
             self.flight_state = "ARMING"
             self.get_logger().info(
                 f"🚀 [명령 수신] 이륙 명령: 목표 고도 {alt:.2f}m (NED Z: {self.target_z:.2f}m)"
+            )
+
+        elif func_name == "move":
+            # 🛡️ 안전 가드: 공중에 안정적으로 비행 중(HOVER 또는 MOVE)이 아니면 이동 거부
+            if self.flight_state not in ["HOVER", "MOVE"]:
+                self.get_logger().warn(
+                    f"⚠️ [명령 거부] 기체가 비행 중이 아닙니다 (현재 상태: {self.flight_state}). "
+                    f"먼저 이륙(takeoff)을 수행하세요!"
+                )
+                return
+
+            dx = float(args.get("dx", 0.0))
+            dy = float(args.get("dy", 0.0))
+            dz = float(args.get("dz", 0.0))
+            d_yaw_deg = float(args.get("d_yaw", 0.0))
+
+            # 현재 드론 헤딩(Yaw) 기준 회전 변환 (기체 좌표계 -> NED 좌표계)
+            yaw = self.current_yaw
+            delta_x_ned = dx * math.cos(yaw) - dy * math.sin(yaw)
+            delta_y_ned = dx * math.sin(yaw) + dy * math.cos(yaw)
+
+            # 새로운 목표 좌표 및 헤딩 계산
+            self.target_x = self.current_x + delta_x_ned
+            self.target_y = self.current_y + delta_y_ned
+            self.target_z = self.current_z - dz  # 고도 상승(+)은 NED에서 -Z 방향
+            new_yaw = self.current_yaw + math.radians(d_yaw_deg)
+            self.target_yaw = math.atan2(math.sin(new_yaw), math.cos(new_yaw))
+
+            self.arrival_counter = 0
+            self.flight_state = "MOVE"
+            self.get_logger().info(
+                f"🚶 [명령 수신] 이동 명령: 전후 {dx:+.2f}m, 좌우 {dy:+.2f}m, 고도변화 {dz:+.2f}m, 회전 {d_yaw_deg:+.1f}° ➔ "
+                f"목표(NED): X={self.target_x:.2f}m, Y={self.target_y:.2f}m, Z={self.target_z:.2f}m"
             )
 
         elif func_name == "land":
@@ -196,7 +237,7 @@ class FlightController(Node):
 
         elif self.flight_state == "TAKEOFF":
             # 목표 고도로 지속적 Setpoint 발행
-            self.publish_position_setpoint(0.0, 0.0, self.target_z)
+            self.publish_position_setpoint(0.0, 0.0, self.target_z, self.target_yaw)
 
             # 고도 오차가 0.2m 이내로 들어오고, 1초(10회) 동안 안정적으로 유지될 때 호버링 전환
             altitude_error = abs(self.current_z - self.target_z)
@@ -204,6 +245,9 @@ class FlightController(Node):
                 self.arrival_counter += 1
                 if self.arrival_counter >= 10:
                     current_alt = -self.current_z
+                    self.target_x = self.current_x
+                    self.target_y = self.current_y
+                    self.target_yaw = self.current_yaw
                     self.get_logger().info(
                         f"🎯 목표 고도 도달 완료! (현재 고도: {current_alt:.2f}m) ➔ 호버링 유지"
                     )
@@ -211,9 +255,27 @@ class FlightController(Node):
             else:
                 self.arrival_counter = 0
 
+        elif self.flight_state == "MOVE":
+            # 이동 목표 위치 및 헤딩 Setpoint 발행
+            self.publish_position_setpoint(self.target_x, self.target_y, self.target_z, self.target_yaw)
+
+            # 3차원 위치 오차 계산
+            dist_error = math.sqrt(
+                (self.current_x - self.target_x) ** 2 +
+                (self.current_y - self.target_y) ** 2 +
+                (self.current_z - self.target_z) ** 2
+            )
+            if dist_error < 0.25:
+                self.arrival_counter += 1
+                if self.arrival_counter >= 10:
+                    self.get_logger().info("🎯 [이동 완료] 목표 위치 도달 완료! ➔ 호버링 유지")
+                    self.flight_state = "HOVER"
+            else:
+                self.arrival_counter = 0
+
         elif self.flight_state == "HOVER":
             # 현재 목표 위치에 그대로 머무르도록 Setpoint 유지
-            self.publish_position_setpoint(0.0, 0.0, self.target_z)
+            self.publish_position_setpoint(self.target_x, self.target_y, self.target_z, self.target_yaw)
 
         elif self.flight_state == "LAND":
             # 착륙이 완료되어 지면에 닿았는지 확인
