@@ -45,44 +45,18 @@ def extract_assistant_text(item):
 
 
 def parse_tool_calls(text):
-    if not text:
-        return []
-
-    matches=re.findall(
-        r"<tool_call>\s*(.*?)\s*</tool_call>",
-        text,
-        re.DOTALL
-    )
-
-    if not matches:
-        matches=[text.strip()]
-
+    if not text:return []
+    matches=re.findall(r"<tool_call>\s*(.*?)\s*</tool_call>",text,re.DOTALL)
+    if not matches:matches=[text.strip()]
     calls=[]
-
     for candidate in matches:
-        json_match=re.search(r"\{.*\}",candidate,re.DOTALL)
-
-        if not json_match:
-            continue
-
         try:
-            obj=json.loads(json_match.group(0))
+            obj=json.loads(candidate.strip())
         except json.JSONDecodeError:
             continue
-
-        if not isinstance(obj,dict):
-            continue
-
-        arguments=obj.get("arguments",{})
-
-        if not isinstance(arguments,dict):
-            arguments={}
-
-        calls.append({
-            "name":obj.get("name"),
-            "arguments":arguments
-        })
-
+        if not isinstance(obj,dict):continue
+        args=obj.get("arguments",{})
+        calls.append({"name":obj.get("name"),"arguments":args if isinstance(args,dict) else {}})
     return calls
 
 
@@ -238,130 +212,77 @@ def is_refusal(true_calls):
 
 def calculate_metrics(results):
     total=len(results)
+    tool_results=[r for r in results if r["true_calls"]]
+    refusal_results=[r for r in results if not r["true_calls"]]
 
-    if total==0:
+    if not total:
         return {
-            "total":0,
-            "tool_call_samples":0,
-            "refusal_samples":0,
-            "parse_rate":0,
-            "tool_name_accuracy":0,
-            "argument_accuracy":0,
-            "exact_match_accuracy":0,
-            "refusal_accuracy":0,
+            "total":0,"tool_call_samples":0,"negative_samples":0,
+            "tool_call_parse_rate":0,"tool_name_accuracy":0,
+            "argument_accuracy":0,"exact_match_accuracy":0,
+            "tool_call_exact_match_accuracy":0,"refusal_accuracy":0,
             "parameter_accuracy":{}
         }
 
-    tool_call_results=[
-        r for r in results
-        if not is_refusal(r["true_calls"])
-    ]
+    parse_success=sum(bool(r["predicted_calls"]) for r in tool_results)
+    parse_rate=parse_success/len(tool_results) if tool_results else 0
 
-    refusal_results=[
-        r for r in results
-        if is_refusal(r["true_calls"])
-    ]
-
-    parse_count=sum(
-        1 for r in results
-        if r["predicted_calls"] or is_refusal(r["true_calls"])
-    )
-
-    tool_correct=0
-    argument_correct=0
-    exact_correct=0
-
+    tool_correct=argument_correct=tool_exact_correct=0
     parameter_total={}
     parameter_correct={}
 
-    for r in tool_call_results:
-        true_calls=r["true_calls"]
-        pred_calls=r["predicted_calls"]
+    for r in tool_results:
+        true_calls,pred_calls=r["true_calls"],r["predicted_calls"]
 
         if len(true_calls)==len(pred_calls):
-            names_correct=True
-            args_correct=True
+            names_ok=True
+            args_ok=True
 
             for true_call,pred_call in zip(true_calls,pred_calls):
                 if true_call["name"]!=pred_call["name"]:
-                    names_correct=False
+                    names_ok=False
 
                 if not arguments_exact_match(
-                    true_call["arguments"],
-                    pred_call["arguments"]
+                    true_call["arguments"],pred_call["arguments"]
                 ):
-                    args_correct=False
+                    args_ok=False
 
                 for key,true_value in true_call["arguments"].items():
                     parameter_total[key]=parameter_total.get(key,0)+1
-
-                    if (
-                        key in pred_call["arguments"]
-                        and values_equal(
-                            true_value,
-                            pred_call["arguments"][key]
-                        )
+                    if key in pred_call["arguments"] and values_equal(
+                        true_value,pred_call["arguments"][key]
                     ):
                         parameter_correct[key]=parameter_correct.get(key,0)+1
 
-            if names_correct:
-                tool_correct+=1
+            tool_correct+=names_ok
+            argument_correct+=args_ok
 
-            if args_correct:
-                argument_correct+=1
+        if tool_calls_exact_match(true_calls,pred_calls):
+            tool_exact_correct+=1
 
-        if tool_calls_exact_match(
-            true_calls,
-            pred_calls
-        ):
-            exact_correct+=1
+    refusal_accuracy=sum(
+        not r["predicted_calls"] for r in refusal_results
+    )/len(refusal_results) if refusal_results else 0
 
-    refusal_correct=0
-
-    for r in refusal_results:
-        if is_refusal(r["predicted_calls"]):
-            refusal_correct+=1
-
-    exact_match_total=0
-
-    for r in results:
-        if tool_calls_exact_match(
-            r["true_calls"],
-            r["predicted_calls"]
-        ):
-            exact_match_total+=1
-
-    parameter_accuracy={
-        key:parameter_correct.get(key,0)/count
-        for key,count in parameter_total.items()
-    }
-
-    tool_total=len(tool_call_results)
-    refusal_total=len(refusal_results)
+    overall_exact=sum(
+        tool_calls_exact_match(r["true_calls"],r["predicted_calls"])
+        for r in results
+    )/total
 
     return {
         "total":total,
-        "tool_call_samples":tool_total,
-        "refusal_samples":refusal_total,
-        "parse_rate":parse_count/total,
-        "tool_name_accuracy":(
-            tool_correct/tool_total
-            if tool_total else 0
-        ),
-        "argument_accuracy":(
-            argument_correct/tool_total
-            if tool_total else 0
-        ),
-        "exact_match_accuracy":exact_match_total/total,
-        "tool_call_exact_match_accuracy":(
-            exact_correct/tool_total
-            if tool_total else 0
-        ),
-        "refusal_accuracy":(
-            refusal_correct/refusal_total
-            if refusal_total else 0
-        ),
-        "parameter_accuracy":parameter_accuracy
+        "tool_call_samples":len(tool_results),
+        "negative_samples":len(refusal_results),
+        "tool_call_parse_rate":parse_rate,
+        "tool_name_accuracy":tool_correct/len(tool_results) if tool_results else 0,
+        "argument_accuracy":argument_correct/len(tool_results) if tool_results else 0,
+        "exact_match_accuracy":overall_exact,
+        "tool_call_exact_match_accuracy":tool_exact_correct/len(tool_results) if tool_results else 0,
+        "refusal_accuracy":refusal_accuracy,
+        "parameter_accuracy":{
+            k:parameter_correct.get(k,0)/v
+            for k,v in parameter_total.items()
+        }
     }
 
 
@@ -409,8 +330,8 @@ def print_metrics(name,metrics):
 
     print(f"총 테스트 수              : {metrics['total']}")
     print(f"Tool Call 테스트          : {metrics['tool_call_samples']}")
-    print(f"Refusal 테스트            : {metrics['refusal_samples']}")
-    print(f"JSON 파싱/형식 성공률     : {metrics['parse_rate']*100:.2f}%")
+    print(f"Negative 테스트           : {metrics['negative_samples']}")
+    print(f"Tool Call 파싱 성공률     : {metrics['tool_call_parse_rate']*100:.2f}%")
     print(f"Tool Name 정확도          : {metrics['tool_name_accuracy']*100:.2f}%")
     print(f"Argument 정확도           : {metrics['argument_accuracy']*100:.2f}%")
     print(f"Tool Call Exact Match      : {metrics['tool_call_exact_match_accuracy']*100:.2f}%")
