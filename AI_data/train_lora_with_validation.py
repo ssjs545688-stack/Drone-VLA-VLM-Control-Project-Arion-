@@ -1,11 +1,14 @@
-import os,json,random
+import os,json,random,sys
 import numpy as np
 import torch
 
+sys.path.append(os.path.abspath("../ros2_ws/src/llm_drone_control"))
+
 from datasets import load_dataset
-from transformers import AutoTokenizer,AutoModelForCausalLM,EarlyStoppingCallback
+from transformers import AutoTokenizer,AutoModelForCausalLM,EarlyStoppingCallback,DataCollatorForSeq2Seq
 from peft import LoraConfig
 from trl import SFTConfig,SFTTrainer
+from llm_drone_control.schema import DEFINE_SCHEMA
 
 # 경로
 MODEL_ID="../models/Qwen3-1.7B"
@@ -57,7 +60,7 @@ print(f"Validation : {len(valid_dataset)}")
 # Tokenizer
 print("\n[2/5] Tokenizer 로딩 중...")
 
-tokenizer=AutoTokenizer.from_pretrained(MODEL_ID)
+tokenizer=AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
 
 if tokenizer.pad_token is None:
     tokenizer.pad_token=tokenizer.eos_token
@@ -75,7 +78,8 @@ else:
 model=AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     torch_dtype=model_dtype,
-    device_map="auto"
+    device_map="auto",
+    trust_remote_code=True
 )
 
 model.config.use_cache=False
@@ -99,17 +103,81 @@ lora_config=LoraConfig(
 
 print("[4/5] LoRA 설정 완료")
 
-# Trainer
+# Trainer & Response-Only Loss
 print("\n[5/5] Trainer 설정 중...")
+
+# 데이터 전처리: prompt 길이를 미리 계산하여 response-only loss labels 생성
+def preprocess(examples):
+    all_input_ids = []
+    all_attention_masks = []
+    all_labels = []
+
+    for msgs in examples["messages"]:
+        # 전체 대화 (system + user + assistant)
+        full_text = tokenizer.apply_chat_template(
+            msgs,
+            tools=DEFINE_SCHEMA,
+            tokenize=False,
+            add_generation_prompt=False,
+            enable_thinking=False
+        )
+        # 프롬프트만 (system + user, assistant 제외)
+        prompt_msgs = [m for m in msgs if m["role"] != "assistant"]
+        prompt_text = tokenizer.apply_chat_template(
+            prompt_msgs,
+            tools=DEFINE_SCHEMA,
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=False
+        )
+
+        full_enc = tokenizer(full_text, truncation=True, max_length=2048, add_special_tokens=False)
+        prompt_enc = tokenizer(prompt_text, truncation=True, max_length=2048, add_special_tokens=False)
+
+        input_ids = full_enc["input_ids"]
+        attention_mask = full_enc["attention_mask"]
+        prompt_len = len(prompt_enc["input_ids"])
+
+        labels = list(input_ids)
+        # 프롬프트 토큰 마스킹 (-100)
+        for i in range(min(prompt_len, len(labels))):
+            labels[i] = -100
+
+        all_input_ids.append(input_ids)
+        all_attention_masks.append(attention_mask)
+        all_labels.append(labels)
+
+    return {
+        "input_ids": all_input_ids,
+        "attention_mask": all_attention_masks,
+        "labels": all_labels
+    }
+
+print("  데이터 전처리 중 (input_ids & response-only labels 생성)...")
+raw_columns = train_dataset.column_names
+train_dataset = train_dataset.map(preprocess, batched=True, remove_columns=raw_columns)
+valid_dataset = valid_dataset.map(preprocess, batched=True, remove_columns=raw_columns)
+
+# 검증: 첫 번째 샘플의 마스킹 비율 출력
+sample = train_dataset[0]
+total_tokens = len(sample["input_ids"])
+active_labels = sum(1 for l in sample["labels"] if l != -100)
+print(f"  샘플 0 검증 - 전체 토큰: {total_tokens}, 학습 대상 (Response) 토큰: {active_labels}")
+
+collator = DataCollatorForSeq2Seq(
+    tokenizer=tokenizer,
+    pad_to_multiple_of=8,
+    return_tensors="pt"
+)
 
 training_args=SFTConfig(
     output_dir=OUTPUT_DIR,
-    num_train_epochs=5,
+    num_train_epochs=4,
     per_device_train_batch_size=4,
     gradient_accumulation_steps=2,
-    learning_rate=1e-4,
+    learning_rate=3e-5,
     lr_scheduler_type="cosine",
-    warmup_ratio=0.05,
+    warmup_ratio=0.1,
     eval_strategy="epoch",
     save_strategy="epoch",
     save_total_limit=2,
@@ -120,7 +188,7 @@ training_args=SFTConfig(
     logging_steps=10,
     fp16=torch.cuda.is_available() and not bf16_supported,
     bf16=torch.cuda.is_available() and bf16_supported,
-    max_length=512,
+    max_length=2048,
     packing=False,
     report_to="none",
     seed=SEED
@@ -130,6 +198,7 @@ trainer=SFTTrainer(
     model=model,
     train_dataset=train_dataset,
     eval_dataset=valid_dataset,
+    data_collator=collator,
     processing_class=tokenizer,
     args=training_args,
     peft_config=lora_config,
@@ -180,8 +249,21 @@ metrics={
 with open(os.path.join(OUTPUT_DIR,"training_metrics.json"),"w",encoding="utf-8") as f:
     json.dump(metrics,f,ensure_ascii=False,indent=2)
 
-with open(os.path.join(OUTPUT_DIR,"log_history.json"),"w",encoding="utf-8") as f:
-    json.dump(trainer.state.log_history,f,ensure_ascii=False,indent=2)
+epoch_logs = {}
+
+for log in trainer.state.log_history:
+    if "epoch" in log:
+        epoch = round(log["epoch"])
+
+        # 정수 epoch에 해당하는 로그만 저장
+        if abs(log["epoch"] - epoch) < 1e-6:
+            epoch_logs[epoch] = {
+                "epoch": epoch,
+                **{k: v for k, v in log.items() if k != "epoch"}
+            }
+
+with open(os.path.join(OUTPUT_DIR, "log_history.json"),"w",encoding="utf-8") as f:
+    json.dump(list(epoch_logs.values()),f,ensure_ascii=False,indent=2)
 
 print("\n"+"="*60)
 print("학습 완료!")
