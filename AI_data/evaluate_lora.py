@@ -1,494 +1,347 @@
-import json,re
-from pathlib import Path
+"""
+학습 데이터/검증 데이터/테스트 데이터 모두 평가를 수행하는 코드
+"""
+import sys,os,json,re
+sys.path.append(os.path.abspath("../ros2_ws/src/llm_drone_control"))
+
 import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM,AutoTokenizer
 from peft import PeftModel
-from llm_drone_control.schema import DEFINE_SCHEMA, SYSTEM_PROMPT
+from llm_drone_control.schema import DEFINE_SCHEMA,SYSTEM_PROMPT
 
-# 경로
-MODEL_ID="../models/Qwen3-1.7B"
+TRAIN_DATASET_PATH="./dataset/train.jsonl"
+VAL_DATASET_PATH="./dataset/val.jsonl"
 TEST_DATASET_PATH="./dataset/test.jsonl"
+
+MODEL_ID="../models/Qwen3-1.7B"
 LORA_DIR="../models/finetuned_qwen3-1.7B_drone_lora"
-RESULT_PATH="./evaluation_results.json"
+RESULT_PATH="../models/finetuned_qwen3-1.7B_drone_lora/evaluation_results.json"
 
 MAX_NEW_TOKENS=256
 DO_SAMPLE=False
 
+# 평가할 데이터셋 설정 ["train","validation","test"]
+EVAL_SPLITS=["train","validation","test"]
 
 def load_jsonl(path):
     data=[]
     with open(path,"r",encoding="utf-8") as f:
-        for line_no,line in enumerate(f,1):
-            line=line.strip()
-            if not line:
-                continue
-            try:
-                data.append(json.loads(line))
-            except json.JSONDecodeError as e:
-                print(f"[경고] {line_no}번째 줄 JSON 파싱 실패: {e}")
+        for n,line in enumerate(f,1):
+            if not line.strip(): continue
+            try: data.append(json.loads(line))
+            except json.JSONDecodeError as e: print(f"[경고] {n}번째 줄 JSON 파싱 실패: {e}")
     return data
 
 
-def extract_user_text(item):
-    for message in item.get("messages",[]):
-        if message.get("role")=="user":
-            return message.get("content","").strip()
-    return ""
-
-
-def extract_assistant_text(item):
-    for message in item.get("messages",[]):
-        if message.get("role")=="assistant":
-            return message.get("content","").strip()
-    return ""
+def extract_text(item,role):
+    return next((m.get("content","").strip() for m in item.get("messages",[]) if m.get("role")==role),"")
 
 
 def parse_tool_calls(text):
     if not text:return []
-    matches=re.findall(r"<tool_call>\s*(.*?)\s*</tool_call>",text,re.DOTALL)
-    if not matches:matches=[text.strip()]
+    matches=re.findall(r"<tool_call>\s*(.*?)\s*</tool_call>",text,re.DOTALL) or [text.strip()]
     calls=[]
-    for candidate in matches:
-        try:
-            obj=json.loads(candidate.strip())
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(obj,dict):continue
-        args=obj.get("arguments",{})
-        calls.append({"name":obj.get("name"),"arguments":args if isinstance(args,dict) else {}})
+    for x in matches:
+        try: obj=json.loads(x.strip())
+        except json.JSONDecodeError: continue
+        if isinstance(obj,dict):
+            args=obj.get("arguments",{})
+            calls.append({"name":obj.get("name"),"arguments":args if isinstance(args,dict) else {}})
     return calls
 
 
 def get_dtype():
-    if torch.cuda.is_available():
-        return torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-    return torch.float32
+    if not torch.cuda.is_available(): return torch.float32
+    return torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
 
 
-def load_base_model():
-    print("\n[1/2] Base Model 로딩 중...")
+def load_model(lora=False):
+    path=LORA_DIR if lora else MODEL_ID
+    tokenizer=AutoTokenizer.from_pretrained(path,trust_remote_code=True)
+    if tokenizer.pad_token is None: tokenizer.pad_token=tokenizer.eos_token
 
-    tokenizer=AutoTokenizer.from_pretrained(
-        MODEL_ID,
-        trust_remote_code=True
+    base=AutoModelForCausalLM.from_pretrained(
+        MODEL_ID,torch_dtype=get_dtype(),device_map="auto",trust_remote_code=True
     )
 
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token=tokenizer.eos_token
-
-    model=AutoModelForCausalLM.from_pretrained(
-        MODEL_ID,
-        torch_dtype=get_dtype(),
-        device_map="auto",
-        trust_remote_code=True
-    )
-
+    model=PeftModel.from_pretrained(base,LORA_DIR) if lora else base
     model.eval()
-
-    print("Base Model 로딩 완료!")
     return tokenizer,model
 
 
-def load_lora_model():
-    print("\n[2/2] Base + LoRA Model 로딩 중...")
-
-    tokenizer=AutoTokenizer.from_pretrained(
-        LORA_DIR,
-        trust_remote_code=True
-    )
-
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token=tokenizer.eos_token
-
-    base_model=AutoModelForCausalLM.from_pretrained(
-        MODEL_ID,
-        torch_dtype=get_dtype(),
-        device_map="auto",
-        trust_remote_code=True
-    )
-
-    model=PeftModel.from_pretrained(
-        base_model,
-        LORA_DIR
-    )
-
-    model.eval()
-
-    print("Base + LoRA Model 로딩 완료!")
-    return tokenizer,model
-
-
-def build_prompt(tokenizer,user_text):
-    messages=[
-        {"role":"system","content":SYSTEM_PROMPT},
-        {"role":"user","content":user_text}
-    ]
-
+def build_prompt(tokenizer,text):
     return tokenizer.apply_chat_template(
-        messages,
-        tools=DEFINE_SCHEMA,
-        tokenize=False,
-        add_generation_prompt=True,
-        enable_thinking=False
+        [{"role":"system","content":SYSTEM_PROMPT},{"role":"user","content":text}],
+        tools=DEFINE_SCHEMA,tokenize=False,add_generation_prompt=True,enable_thinking=False
     )
 
 
 @torch.inference_mode()
-def generate(model,tokenizer,user_text):
-    prompt=build_prompt(tokenizer,user_text)
-
-    inputs=tokenizer(
-        prompt,
-        return_tensors="pt"
-    )
-
+def generate(model,tokenizer,text):
+    inputs=tokenizer(build_prompt(tokenizer,text),return_tensors="pt")
     device=next(model.parameters()).device
     inputs={k:v.to(device) for k,v in inputs.items()}
-
-    output_ids=model.generate(
-        **inputs,
-        max_new_tokens=MAX_NEW_TOKENS,
-        do_sample=DO_SAMPLE,
-        pad_token_id=tokenizer.pad_token_id,
-        eos_token_id=tokenizer.eos_token_id
+    output=model.generate(
+        **inputs,max_new_tokens=MAX_NEW_TOKENS,do_sample=DO_SAMPLE,
+        pad_token_id=tokenizer.pad_token_id,eos_token_id=tokenizer.eos_token_id
     )
-
-    generated_ids=output_ids[0][inputs["input_ids"].shape[1]:]
-
-    return tokenizer.decode(
-        generated_ids,
-        skip_special_tokens=True
+    raw = tokenizer.decode(
+        output[0][inputs["input_ids"].shape[1]:],skip_special_tokens=True
     ).strip()
+    
+    # <tool_call> 태그 내부의 불필요한 줄바꿈 제거
+    cleaned = re.sub(r'<tool_call>\s*', '<tool_call>', raw)
+    cleaned = re.sub(r'\s*</tool_call>', '</tool_call>', cleaned)
+    return cleaned
 
 
-def normalize_value(value):
-    if isinstance(value,float) and value.is_integer():
-        return int(value)
-
-    if isinstance(value,str):
-        return value.strip()
-
-    return value
+def norm(v):
+    if isinstance(v,float) and v.is_integer(): return int(v)
+    return v.strip() if isinstance(v,str) else v
 
 
-def values_equal(a,b):
-    return normalize_value(a)==normalize_value(b)
+def args_match(a,b):
+    return set(a)==set(b) and all(norm(a[k])==norm(b[k]) for k in a)
 
 
-def arguments_exact_match(true_args,pred_args):
-    if set(true_args.keys())!=set(pred_args.keys()):
-        return False
-
-    return all(
-        values_equal(true_args[key],pred_args[key])
-        for key in true_args
+def calls_match(a,b):
+    return len(a)==len(b) and all(
+        x["name"]==y["name"] and args_match(x["arguments"],y["arguments"])
+        for x,y in zip(a,b)
     )
-
-
-def tool_call_equal(true_call,pred_call):
-    if true_call["name"]!=pred_call["name"]:
-        return False
-
-    return arguments_exact_match(
-        true_call["arguments"],
-        pred_call["arguments"]
-    )
-
-
-def tool_calls_exact_match(true_calls,pred_calls):
-    if len(true_calls)!=len(pred_calls):
-        return False
-
-    return all(
-        tool_call_equal(true_call,pred_call)
-        for true_call,pred_call in zip(true_calls,pred_calls)
-    )
-
-
-def is_refusal(true_calls):
-    return len(true_calls)==0
 
 
 def calculate_metrics(results):
     total=len(results)
-    tool_results=[r for r in results if r["true_calls"]]
-    refusal_results=[r for r in results if not r["true_calls"]]
+    tools=[r for r in results if r["true_calls"]]
+    refusals=[r for r in results if not r["true_calls"]]
 
     if not total:
-        return {
-            "total":0,"tool_call_samples":0,"negative_samples":0,
-            "tool_call_parse_rate":0,"tool_name_accuracy":0,
-            "argument_accuracy":0,"exact_match_accuracy":0,
-            "tool_call_exact_match_accuracy":0,"refusal_accuracy":0,
-            "parameter_accuracy":{}
-        }
+        return {k:0 for k in [
+            "total","tool_call_samples","negative_samples",
+            "tool_call_parse_rate","tool_name_accuracy","argument_accuracy",
+            "exact_match_accuracy","tool_call_exact_match_accuracy",
+            "refusal_accuracy"
+        ]}|{"parameter_accuracy":{}}
 
-    parse_success=sum(bool(r["predicted_calls"]) for r in tool_results)
-    parse_rate=parse_success/len(tool_results) if tool_results else 0
+    parse=sum(bool(r["predicted_calls"]) for r in tools)/len(tools)
+    name_ok=args_ok=exact_ok=0
+    ptotal,pcorrect={},{}
 
-    tool_correct=argument_correct=tool_exact_correct=0
-    parameter_total={}
-    parameter_correct={}
+    for r in tools:
+        t,p=r["true_calls"],r["predicted_calls"]
 
-    for r in tool_results:
-        true_calls,pred_calls=r["true_calls"],r["predicted_calls"]
+        if len(t)==len(p):
+            n_ok=a_ok=True
+            for tc,pc in zip(t,p):
+                if tc["name"]!=pc["name"]: n_ok=False
+                if not args_match(tc["arguments"],pc["arguments"]): a_ok=False
 
-        if len(true_calls)==len(pred_calls):
-            names_ok=True
-            args_ok=True
+                for k,v in tc["arguments"].items():
+                    ptotal[k]=ptotal.get(k,0)+1
+                    if k in pc["arguments"] and norm(v)==norm(pc["arguments"][k]):
+                        pcorrect[k]=pcorrect.get(k,0)+1
 
-            for true_call,pred_call in zip(true_calls,pred_calls):
-                if true_call["name"]!=pred_call["name"]:
-                    names_ok=False
+            name_ok+=n_ok
+            args_ok+=a_ok
 
-                if not arguments_exact_match(
-                    true_call["arguments"],pred_call["arguments"]
-                ):
-                    args_ok=False
+        exact_ok+=calls_match(t,p)
 
-                for key,true_value in true_call["arguments"].items():
-                    parameter_total[key]=parameter_total.get(key,0)+1
-                    if key in pred_call["arguments"] and values_equal(
-                        true_value,pred_call["arguments"][key]
-                    ):
-                        parameter_correct[key]=parameter_correct.get(key,0)+1
-
-            tool_correct+=names_ok
-            argument_correct+=args_ok
-
-        if tool_calls_exact_match(true_calls,pred_calls):
-            tool_exact_correct+=1
-
-    refusal_accuracy=sum(
-        not r["predicted_calls"] for r in refusal_results
-    )/len(refusal_results) if refusal_results else 0
-
-    overall_exact=sum(
-        tool_calls_exact_match(r["true_calls"],r["predicted_calls"])
-        for r in results
-    )/total
+    refusal=sum(not r["predicted_calls"] for r in refusals)/len(refusals) if refusals else 0
+    overall=sum(calls_match(r["true_calls"],r["predicted_calls"]) for r in results)/total
 
     return {
         "total":total,
-        "tool_call_samples":len(tool_results),
-        "negative_samples":len(refusal_results),
-        "tool_call_parse_rate":parse_rate,
-        "tool_name_accuracy":tool_correct/len(tool_results) if tool_results else 0,
-        "argument_accuracy":argument_correct/len(tool_results) if tool_results else 0,
-        "exact_match_accuracy":overall_exact,
-        "tool_call_exact_match_accuracy":tool_exact_correct/len(tool_results) if tool_results else 0,
-        "refusal_accuracy":refusal_accuracy,
-        "parameter_accuracy":{
-            k:parameter_correct.get(k,0)/v
-            for k,v in parameter_total.items()
-        }
+        "tool_call_samples":len(tools),
+        "negative_samples":len(refusals),
+        "tool_call_parse_rate":parse,
+        "tool_name_accuracy":name_ok/len(tools) if tools else 0,
+        "argument_accuracy":args_ok/len(tools) if tools else 0,
+        "exact_match_accuracy":overall,
+        "tool_call_exact_match_accuracy":exact_ok/len(tools) if tools else 0,
+        "refusal_accuracy":refusal,
+        "parameter_accuracy":{k:pcorrect.get(k,0)/v for k,v in ptotal.items()}
     }
 
 
-def evaluate_model(model_name,model,tokenizer,test_data):
-    print(f"\n{'='*70}")
-    print(f"{model_name} 평가 시작")
-    print(f"{'='*70}")
-
+def evaluate(model,tokenizer,data):
     results=[]
-
-    for idx,item in enumerate(tqdm(test_data)):
-        user_text=extract_user_text(item)
-        assistant_text=extract_assistant_text(item)
-
-        true_calls=parse_tool_calls(assistant_text)
+    for i,item in enumerate(tqdm(data)):
+        user=extract_text(item,"user")
+        expected=extract_text(item,"assistant")
+        true=parse_tool_calls(expected)
 
         try:
-            predicted_text=generate(
-                model,
-                tokenizer,
-                user_text
-            )
-
-            predicted_calls=parse_tool_calls(predicted_text)
-
+            prediction=generate(model,tokenizer,user)
+            predicted=parse_tool_calls(prediction)
         except Exception as e:
-            predicted_text=f"[ERROR] {e}"
-            predicted_calls=[]
+            prediction=f"[ERROR] {e}"
+            predicted=[]
 
         results.append({
-            "index":idx,
-            "input":user_text,
-            "expected":assistant_text,
-            "prediction":predicted_text,
-            "true_calls":true_calls,
-            "predicted_calls":predicted_calls
+            "index":i,"input":user,"expected":expected,
+            "prediction":prediction,"true_calls":true,"predicted_calls":predicted
         })
 
     return calculate_metrics(results),results
 
 
-def print_metrics(name,metrics):
-    print(f"\n{name}")
-    print("-"*40)
-
-    print(f"총 테스트 수              : {metrics['total']}")
-    print(f"Tool Call 테스트          : {metrics['tool_call_samples']}")
-    print(f"Negative 테스트           : {metrics['negative_samples']}")
-    print(f"Tool Call 파싱 성공률     : {metrics['tool_call_parse_rate']*100:.2f}%")
-    print(f"Tool Name 정확도          : {metrics['tool_name_accuracy']*100:.2f}%")
-    print(f"Argument 정확도           : {metrics['argument_accuracy']*100:.2f}%")
-    print(f"Tool Call Exact Match      : {metrics['tool_call_exact_match_accuracy']*100:.2f}%")
-    print(f"Refusal 정확도             : {metrics['refusal_accuracy']*100:.2f}%")
-    print(f"전체 Exact Match           : {metrics['exact_match_accuracy']*100:.2f}%")
-
-    print("\nParameter별 정확도")
-
-    for key,value in metrics["parameter_accuracy"].items():
-        print(f"  {key:8s}: {value*100:.2f}%")
+def get_errors(results):
+    return [
+        {k:r[k] for k in [
+            "index","input","expected","prediction","true_calls","predicted_calls"
+        ]}
+        for r in results
+        if not calls_match(r["true_calls"],r["predicted_calls"])
+    ]
 
 
 def print_failures(results,max_items=20):
-    failures=[
-        r for r in results
-        if not tool_calls_exact_match(
-            r["true_calls"],
-            r["predicted_calls"]
-        )
-    ]
-
-    print(f"\n오답 샘플 ({min(len(failures),max_items)}개):")
-
-    for r in failures[:max_items]:
+    errors=[r for r in results if not calls_match(r["true_calls"],r["predicted_calls"])]
+    print(f"\n오답 샘플 ({min(len(errors),max_items)}개):")
+    for r in errors[:max_items]:
         print("\n"+"-"*70)
         print(f"[입력] {r['input']}")
         print(f"[정답] {r['expected']}")
         print(f"[예측] {r['prediction']}")
 
+def print_comparison(output):
+    metrics=[
+        ("tool_call_parse_rate","Tool Call 파싱 성공률"),
+        ("tool_name_accuracy","Tool Name 정확도"),
+        ("argument_accuracy","Argument 정확도"),
+        ("tool_call_exact_match_accuracy","Tool Call Exact Match"),
+        ("refusal_accuracy","Refusal 정확도"),
+        ("exact_match_accuracy","전체 Exact Match")
+    ]
+
+    for split in EVAL_SPLITS:
+        base=output["base_model"][split]["metrics"]
+        lora=output["lora_model"][split]["metrics"]
+
+        print(f"\n{'='*70}")
+        print(f"{split.upper()} - BASE → LORA 비교")
+        print("="*70)
+
+        for key,label in metrics:
+            b=base[key]*100
+            l=lora[key]*100
+            print(f"{label:26s}: {b:6.2f}% → {l:6.2f}%  ({l-b:+.2f}%p)")
+
+        print("\nParameter별 정확도")
+
+        keys=set(base["parameter_accuracy"])|set(lora["parameter_accuracy"])
+
+        for key in sorted(keys):
+            b=base["parameter_accuracy"].get(key,0)*100
+            l=lora["parameter_accuracy"].get(key,0)*100
+            print(f"  {key:8s}: {b:6.2f}% → {l:6.2f}%  ({l-b:+.2f}%p)")
+
+def build_comparison(output):
+    metrics=[
+        "tool_call_parse_rate",
+        "tool_name_accuracy",
+        "argument_accuracy",
+        "tool_call_exact_match_accuracy",
+        "refusal_accuracy",
+        "exact_match_accuracy"
+    ]
+
+    comparison={}
+
+    for split in EVAL_SPLITS:
+        base=output["base_model"][split]["metrics"]
+        lora=output["lora_model"][split]["metrics"]
+
+        comparison[split]={}
+
+        for key in metrics:
+            b=base[key]
+            l=lora[key]
+
+            comparison[split][key]={
+                "base":b,
+                "lora":l,
+                "improvement_pp":(l-b)*100
+            }
+
+        comparison[split]["parameter_accuracy"]={}
+
+        keys=set(base["parameter_accuracy"])|set(lora["parameter_accuracy"])
+
+        for key in sorted(keys):
+            b=base["parameter_accuracy"].get(key,0)
+            l=lora["parameter_accuracy"].get(key,0)
+
+            comparison[split]["parameter_accuracy"][key]={
+                "base":b,
+                "lora":l,
+                "improvement_pp":(l-b)*100
+            }
+
+    return comparison
 
 def main():
-    print("="*70)
-    print("        LoRA 드론 제어 모델 평가")
-    print("="*70)
+    print("="*70+"\n        LoRA 드론 제어 모델 평가\n"+"="*70)
 
-    print("\n테스트 데이터 로딩 중...")
+    all_datasets={
+        "train":load_jsonl(TRAIN_DATASET_PATH),
+        "validation":load_jsonl(VAL_DATASET_PATH),
+        "test":load_jsonl(TEST_DATASET_PATH)
+    }
 
-    test_data=load_jsonl(TEST_DATASET_PATH)
+    datasets={k:all_datasets[k] for k in EVAL_SPLITS}
 
-    print(f"Test 데이터 : {len(test_data)}개")
-    print(f"Test 경로   : {TEST_DATASET_PATH}")
+    for name,data in datasets.items():
+        print(f"{name.capitalize()} 데이터 : {len(data)}개")
 
-    # Base Model
-    base_tokenizer,base_model=load_base_model()
-
-    base_metrics,base_results=evaluate_model(
-        "BASE MODEL",
-        base_model,
-        base_tokenizer,
-        test_data
-    )
-
-    print_metrics(
-        "BASE MODEL 결과",
-        base_metrics
-    )
-
-    print_failures(base_results)
-
-    del base_model
-    del base_tokenizer
-
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-
-    # Base + LoRA
-    lora_tokenizer,lora_model=load_lora_model()
-
-    lora_metrics,lora_results=evaluate_model(
-        "BASE + LORA MODEL",
-        lora_model,
-        lora_tokenizer,
-        test_data
-    )
-
-    print_metrics(
-        "BASE + LORA 결과",
-        lora_metrics
-    )
-
-    print_failures(lora_results)
-
-    # 비교
-    print("\n"+"="*70)
-    print("최종 비교")
-    print("="*70)
-
-    print(
-        f"Tool Name Accuracy       : "
-        f"{base_metrics['tool_name_accuracy']*100:.2f}%"
-        f" -> "
-        f"{lora_metrics['tool_name_accuracy']*100:.2f}%"
-    )
-
-    print(
-        f"Argument Accuracy        : "
-        f"{base_metrics['argument_accuracy']*100:.2f}%"
-        f" -> "
-        f"{lora_metrics['argument_accuracy']*100:.2f}%"
-    )
-
-    print(
-        f"Tool Call Exact Match    : "
-        f"{base_metrics['tool_call_exact_match_accuracy']*100:.2f}%"
-        f" -> "
-        f"{lora_metrics['tool_call_exact_match_accuracy']*100:.2f}%"
-    )
-
-    print(
-        f"Refusal Accuracy         : "
-        f"{base_metrics['refusal_accuracy']*100:.2f}%"
-        f" -> "
-        f"{lora_metrics['refusal_accuracy']*100:.2f}%"
-    )
-
-    print(
-        f"Overall Exact Match      : "
-        f"{base_metrics['exact_match_accuracy']*100:.2f}%"
-        f" -> "
-        f"{lora_metrics['exact_match_accuracy']*100:.2f}%"
-    )
-
-    # 결과 저장
     output={
         "config":{
             "model_id":MODEL_ID,
             "lora_dir":LORA_DIR,
+            "train_dataset":TRAIN_DATASET_PATH,
+            "validation_dataset":VAL_DATASET_PATH,
             "test_dataset":TEST_DATASET_PATH,
-            "test_size":len(test_data),
+            "eval_splits":EVAL_SPLITS,
+            "train_size":len(all_datasets["train"]),
+            "validation_size":len(all_datasets["validation"]),
+            "test_size":len(all_datasets["test"]),
             "max_new_tokens":MAX_NEW_TOKENS,
             "do_sample":DO_SAMPLE
         },
-        "base_model":{
-            "metrics":base_metrics,
-            "results":base_results
-        },
-        "lora_model":{
-            "metrics":lora_metrics,
-            "results":lora_results
-        }
+        "comparison":{}
     }
 
-    with open(
-        RESULT_PATH,
-        "w",
-        encoding="utf-8"
-    ) as f:
-        json.dump(
-            output,
-            f,
-            ensure_ascii=False,
-            indent=2
-        )
+    for model_name,is_lora in [("base_model",False),("lora_model",True)]:
+        print(f"\n{'='*70}\n{model_name.upper()} 평가\n{'='*70}")
 
-    print(
-        f"\n평가 결과 저장 완료: {RESULT_PATH}"
-    )
+        tokenizer,model=load_model(is_lora)
+        output[model_name]={}
+
+        for split,data in datasets.items():
+            print(f"\n{'='*70}\n{split.upper()} 평가 시작\n{'='*70}")
+
+            metrics,results=evaluate(model,tokenizer,data)
+            print_failures(results)
+
+            output[model_name][split]={
+                "metrics":metrics,
+                "errors":get_errors(results)
+            }
+
+        del model,tokenizer
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    output["comparison"]=build_comparison(output)
+    print_comparison(output)
+
+    with open(RESULT_PATH,"w",encoding="utf-8") as f:
+        json.dump(output,f,ensure_ascii=False,indent=2)
+
+    print(f"\n평가 결과 저장 완료: {RESULT_PATH}")
 
 
 if __name__=="__main__":
