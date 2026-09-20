@@ -21,6 +21,7 @@ from px4_msgs.msg import (
     VehicleLandDetected
 )
 
+from collections import deque
 import json
 import re
 import math
@@ -87,12 +88,16 @@ class FlightController(Node):
         # 비행 제어 상태 머신: IDLE, ARMING, TAKEOFF, HOVER, MOVE, LAND
         self.flight_state = "IDLE"
         self.target_altitude = 0.0  # 양수 (단위: m)
+        self.home_z = None          # 지면 기준 고도 (Home Z, 상대 고도 계산용)
         self.target_x = 0.0
         self.target_y = 0.0
         self.target_z = 0.0         # 실제 계산된 목표 NED z 좌표
         self.target_yaw = 0.0       # 목표 헤딩 각도 (단위: rad)
         self.heartbeat_counter = 0
         self.arrival_counter = 0    # 목표 도달 연속 카운터
+
+        # 미션 대기열 (Queue)
+        self.mission_queue = deque()
 
         # 10Hz 주기적 제어 루프 타이머
         self.timer = self.create_timer(0.1, self.timer_callback)
@@ -109,13 +114,17 @@ class FlightController(Node):
         self.current_z = msg.z
         self.current_yaw = msg.heading
 
-        # 실시간 위치 및 헤딩 로그 출력 (1초 주기로 스로틀링하여 터미널 도배 방지)
-        current_altitude = -self.current_z
+        # 지면에 착지해 있거나 대기 중(IDLE)일 때는 QGC와 동일하게 0.00m로 고정
+        if self.flight_state == "IDLE" or self.home_z is None:
+            current_altitude = 0.0
+        else:
+            # 비행 중에는 시동 걸린 바닥(home_z) 기준 상대 고도 계산 (QGC와 100% 일치)
+            current_altitude = self.home_z - self.current_z
         yaw_deg = math.degrees(self.current_yaw)
         self.get_logger().info(
             f"📍 [드론 위치 | 상태: {self.flight_state}] X: {self.current_x:6.2f}m | Y: {self.current_y:6.2f}m | "
             f"고도: {current_altitude:5.2f}m | Yaw: {yaw_deg:6.1f}°",
-            throttle_duration_sec=1.0
+            throttle_duration_sec=0.5
         )
 
     def status_callback(self, msg: VehicleStatus):
@@ -128,50 +137,70 @@ class FlightController(Node):
         self.is_landed = msg.landed
 
     def llm_response_callback(self, msg: String):
-        """LLM이 발행한 응답 문자열 파싱"""
+        """LLM이 발행한 응답 문자열 파싱 후 미션 큐에 적재"""
         text = msg.data.strip()
         self.get_logger().info(f"📩 수신된 LLM 응답: {text}")
 
-        # 정규표현식으로 <tool_call> 태그 추출
-        match = re.search(r"<tool_call>\s*(.*?)\s*</tool_call>", text, re.DOTALL)
-        if not match:
+        # 정규표현식으로 모든 <tool_call> 태그 추출
+        matches = re.findall(r"<tool_call>\s*(.*?)\s*</tool_call>", text, re.DOTALL)
+        if not matches:
             self.get_logger().warn("⚠️ 응답에서 <tool_call> 태그를 찾지 못했습니다.")
             return
 
-        json_str = match.group(1)
-        try:
-            call_data = json.loads(json_str)
-            func_name = call_data.get("name")
-            args = call_data.get("arguments", {})
-        except Exception as e:
-            self.get_logger().error(f"❌ Tool Call JSON 파싱 실패: {e}")
+        added_count = 0
+        for json_str in matches:
+            try:
+                call_data = json.loads(json_str)
+                self.mission_queue.append(call_data)
+                added_count += 1
+            except Exception as e:
+                self.get_logger().error(f"❌ Tool Call JSON 파싱 실패: {e}")
+
+        self.get_logger().info(f"📥 {added_count}개의 미션이 대기열에 추가되었습니다. (현재 큐 크기: {len(self.mission_queue)})")
+
+        # 드론이 대기 중(IDLE 또는 HOVER)이면 즉시 첫 번째 미션 시작
+        if self.flight_state in ["IDLE", "HOVER"]:
+            self.execute_next_mission()
+
+    def execute_next_mission(self):
+        """미션 큐에서 다음 명령을 꺼내어 실행"""
+        if not self.mission_queue:
             return
+
+        call_data = self.mission_queue.popleft()
+        func_name = call_data.get("name")
+        args = call_data.get("arguments", {})
+
+        self.get_logger().info(f"▶️ [미션 시작] {func_name} (남은 대기열: {len(self.mission_queue)})")
 
         # 명령에 따른 동작 분기
         if func_name == "takeoff":
-            # 🛡️ 안전 가드: 이미 비행 중인 경우 중복 이륙 거부
+            # 🛡️ 안전 가드: 이미 비행 중인 경우 중복 이륙 건너뛰고 다음 미션 수행
             if self.flight_state in ["TAKEOFF", "HOVER", "MOVE"]:
-                self.get_logger().warn(f"⚠️ [명령 거부] 이미 비행 중입니다 (현재 상태: {self.flight_state}).")
+                self.get_logger().warn(f"⚠️ [명령 건너뜀] 이미 비행 중입니다 (현재 상태: {self.flight_state}).")
+                self.execute_next_mission()
                 return
 
             alt = float(args.get("altitude", 2.0))
             self.target_altitude = alt
-            # PX4 NED 좌표계: 고도 상승은 -Z 방향 (이륙 지면 기준 -alt)
-            self.target_z = -abs(alt)
+            # 이륙 시점의 실제 바닥(current_z)을 기준으로 목표 고도 계산 (PX4 NED: 고도 상승은 -Z 방향)
+            self.home_z = self.current_z
+            self.target_z = self.home_z - abs(alt)
             self.heartbeat_counter = 0
             self.arrival_counter = 0
             self.flight_state = "ARMING"
             self.get_logger().info(
-                f"🚀 [명령 수신] 이륙 명령: 목표 고도 {alt:.2f}m (NED Z: {self.target_z:.2f}m)"
+                f"🚀 [명령 수신] 이륙 명령: 목표 상대 고도 {alt:.2f}m (바닥 Z: {self.home_z:.2f}m ➔ 목표 NED Z: {self.target_z:.2f}m)"
             )
 
         elif func_name == "move":
-            # 🛡️ 안전 가드: 공중에 안정적으로 비행 중(HOVER 또는 MOVE)이 아니면 이동 거부
+            # 🛡️ 안전 가드: 공중에 안정적으로 비행 중(HOVER 또는 MOVE)이 아니면 이동 거부 및 큐 초기화
             if self.flight_state not in ["HOVER", "MOVE"]:
                 self.get_logger().warn(
                     f"⚠️ [명령 거부] 기체가 비행 중이 아닙니다 (현재 상태: {self.flight_state}). "
                     f"먼저 이륙(takeoff)을 수행하세요!"
                 )
+                self.mission_queue.clear()
                 return
 
             dx = float(args.get("dx", 0.0))
@@ -179,16 +208,22 @@ class FlightController(Node):
             dz = float(args.get("dz", 0.0))
             d_yaw_deg = float(args.get("d_yaw", 0.0))
 
+            # 스키마 좌표계 -> PX4 FRD 바디 좌표계 변환
+            # 스키마: 전진(+)/후진(-), 좌(+)/우(-), 상승(+)/하강(-), 반시계(+)/시계(-)
+            # PX4: Forward(+)/Back(-), Right(+)/Left(-), Down(+)/Up(-), CW(+)/CCW(-)
+            body_x = dx
+            body_y = -dy  # 스키마의 '좌(+)'를 PX4의 '좌(-Y)'로 변환
+
             # 현재 드론 헤딩(Yaw) 기준 회전 변환 (기체 좌표계 -> NED 좌표계)
             yaw = self.current_yaw
-            delta_x_ned = dx * math.cos(yaw) - dy * math.sin(yaw)
-            delta_y_ned = dx * math.sin(yaw) + dy * math.cos(yaw)
+            delta_x_ned = body_x * math.cos(yaw) - body_y * math.sin(yaw)
+            delta_y_ned = body_x * math.sin(yaw) + body_y * math.cos(yaw)
 
             # 새로운 목표 좌표 및 헤딩 계산
             self.target_x = self.current_x + delta_x_ned
             self.target_y = self.current_y + delta_y_ned
             self.target_z = self.current_z - dz  # 고도 상승(+)은 NED에서 -Z 방향
-            new_yaw = self.current_yaw + math.radians(d_yaw_deg)
+            new_yaw = self.current_yaw - math.radians(d_yaw_deg)  # 스키마의 '반시계(+)'를 PX4 '반시계(-Yaw)'로 변환
             self.target_yaw = math.atan2(math.sin(new_yaw), math.cos(new_yaw))
 
             self.arrival_counter = 0
@@ -199,12 +234,17 @@ class FlightController(Node):
             )
 
         elif func_name == "land":
+            # 착륙 시작 시 비행 안전을 위해 대기열 비움
+            self.mission_queue.clear()
             self.get_logger().info("🛬 [명령 수신] 착륙 명령을 시작합니다.")
             self.flight_state = "LAND"
             self.send_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
 
         else:
             self.get_logger().warn(f"⚠️ 현재 버전에서 지원하지 않는 명령입니다: {func_name}")
+            # 지원하지 않는 명령이면 다음 미션 실행
+            self.execute_next_mission()
+
 
     # =================================================================
     # 주기적 제어 루프 (10Hz)
@@ -219,7 +259,7 @@ class FlightController(Node):
             self.publish_position_setpoint(0.0, 0.0, self.target_z)
             self.heartbeat_counter += 1
 
-            if self.heartbeat_counter == 10:
+            if self.heartbeat_counter == 15:
                 self.get_logger().info("⚙️ Offboard 모드 전환 요청...")
                 self.send_vehicle_command(
                     VehicleCommand.VEHICLE_CMD_DO_SET_MODE,
@@ -227,7 +267,7 @@ class FlightController(Node):
                     param2=6.0   # PX4_CUSTOM_MAIN_MODE_OFFBOARD
                 )
 
-            if self.heartbeat_counter == 15:
+            if self.heartbeat_counter == 20:
                 self.get_logger().info("⚡ 시동(ARM) 요청...")
                 self.send_vehicle_command(
                     VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM,
@@ -244,14 +284,19 @@ class FlightController(Node):
             if altitude_error < 0.2:
                 self.arrival_counter += 1
                 if self.arrival_counter >= 10:
-                    current_alt = -self.current_z
+                    current_alt = (self.home_z - self.current_z) if self.home_z is not None else -self.current_z
                     self.target_x = self.current_x
                     self.target_y = self.current_y
                     self.target_yaw = self.current_yaw
                     self.get_logger().info(
-                        f"🎯 목표 고도 도달 완료! (현재 고도: {current_alt:.2f}m) ➔ 호버링 유지"
+                        f"🎯 목표 고도 도달 완료! (현재 상대 고도: {current_alt:.2f}m)"
                     )
                     self.flight_state = "HOVER"
+                    if self.mission_queue:
+                        self.get_logger().info("📋 다음 대기 미션 실행...")
+                        self.execute_next_mission()
+                    else:
+                        self.get_logger().info("➔ 대기열 비어있음: 호버링 유지")
             else:
                 self.arrival_counter = 0
 
@@ -268,8 +313,13 @@ class FlightController(Node):
             if dist_error < 0.25:
                 self.arrival_counter += 1
                 if self.arrival_counter >= 10:
-                    self.get_logger().info("🎯 [이동 완료] 목표 위치 도달 완료! ➔ 호버링 유지")
+                    self.get_logger().info("🎯 [이동 완료] 목표 위치 도달 완료!")
                     self.flight_state = "HOVER"
+                    if self.mission_queue:
+                        self.get_logger().info("📋 다음 대기 미션 실행...")
+                        self.execute_next_mission()
+                    else:
+                        self.get_logger().info("➔ 대기열 비어있음: 호버링 유지")
             else:
                 self.arrival_counter = 0
 
@@ -280,6 +330,7 @@ class FlightController(Node):
         elif self.flight_state == "LAND":
             # 착륙이 완료되어 지면에 닿았는지 확인
             if self.is_landed and not self.is_armed:
+                self.home_z = self.current_z  # 새로운 지면 높이를 home_z로 갱신 (재이륙 시 0m 기준)
                 self.get_logger().info("🏁 착륙 및 모터 정지 완료! IDLE 상태로 복귀합니다.")
                 self.flight_state = "IDLE"
 

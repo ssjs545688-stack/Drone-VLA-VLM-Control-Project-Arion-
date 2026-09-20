@@ -12,12 +12,40 @@
 
 ---
 
-## 🛠️ 사전 준비 (빌드 및 노드 실행)
+## 🛠️ 사전 준비 (시뮬레이터, 브릿지 및 노드 실행)
 
-### 터미널 1: `flight_controller` 실행
+시뮬레이션 및 비행 제어를 위해 아래 순서대로 각각의 터미널 창에서 실행합니다.
+
+### 🖥️ 터미널 1: QGroundControl (QGC) 실행
+지상 관제 및 드론 상태/고도를 모니터링합니다. (QGC 파일이 있는 경로에서 실행)
+```bash
+./QGroundControl-x86_64.AppImage
+```
+
+### 🌉 터미널 2: MicroXRCEAgent 실행
+PX4 uORB 메시지와 ROS 2 토픽(`px4_msgs`) 간의 통신 브릿지를 연결합니다.
+```bash
+MicroXRCEAgent udp4 -p 8888
+```
+
+### 🚁 터미널 3: PX4 SITL & Gazebo 시뮬레이터 실행
+가상 드론 기체와 월드 환경을 띄웁니다.
+```bash
+cd ~/PX4-Autopilot
+PX4_SYS_AUTOSTART=4010 \
+PX4_SIM_MODEL=gz_x500_mono_cam \
+PX4_GZ_MODEL_POSE="0,0,0.1,0,0,1.57" \
+PX4_GZ_WORLD=default \
+~/PX4-Autopilot/build/px4_sitl_default/bin/px4
+```
+#. PX4_GZ_MODEL_POSE="0,0,0.1,0,0,1.57"
+#. PX4:NED 북쪽이 0도, 가제보:ENU 동쪽이 0도, π/2~=1.57
+
+### 🎮 터미널 4: ROS 2 빌드 및 `flight_controller` 실행
+패키지를 빌드하고 비행 제어 노드를 구동하여 명령 대기 상태로 만듭니다.
 ```bash
 cd ~/Drone-VLA-VLM-Control-Project-Arion-/ros2_ws
-colcon build
+colcon build --packages-select llm_drone_control
 source install/setup.bash
 ros2 run llm_drone_control flight_controller
 ```
@@ -26,7 +54,13 @@ ros2 run llm_drone_control flight_controller
 
 ## 🎮 비행 테스트 시나리오별 명령어
 
-새 터미널(터미널 2)을 열고 아래 명령어를 순서대로 실행해 보세요.
+새 터미널(**터미널 5**)을 열고 환경 설정 후 아래 명령어를 순서대로 실행해 보세요.
+
+```bash
+source /opt/ros/humble/setup.bash
+source ~/Tae_ws/Drone-VLA-VLM-Control-Project-Arion-/ros2_ws/install/setup.bash
+```
+
 
 ### 1단계: 이륙 (Takeoff)
 
@@ -106,6 +140,25 @@ ros2 topic pub --once /llm_response std_msgs/msg/String "{data: '<tool_call>{\"n
 * **결과 확인**: 하강 ➔ 지면 접촉 감지(`landed == True`) ➔ 모터 정지 ➔ 상태가 `IDLE`로 복귀.
 
 ---
+
+### 6단계: 복합 연속 명령 및 미션 큐 (이륙 ➔ 이동 ➔ 착륙)
+
+한 번의 응답에 여러 개의 `<tool_call>`이 포함되어 있을 때, 비행 제어기(`flight_controller`)가 미션 큐(Queue)를 통해 순서대로 자동 실행하는지 테스트합니다.
+
+#### 🚀 4.0m 이륙 ➔ 복합 입체 이동 (앞 1.0m, 왼쪽 2.0m, 상승 1.0m) ➔ 자동 착륙
+```bash
+ros2 topic pub --once /llm_response std_msgs/msg/String "{data: '<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 1.0, \"dy\": 2.0, \"dz\": 1.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>'}"
+```
+* **동작 흐름 및 결과 확인**:
+  1. `ARMING` ➔ `TAKEOFF` 수행: 목표 고도 **4.0m**까지 수직 상승 후 1초간 호버링 안정화 확인.
+  2. 고도 도달 즉시 대기열에서 다음 명령 꺼냄 ➔ `MOVE` 수행:
+     * 현재 기수(머리) 기준으로 **앞으로 1.0m (`dx: 1.0`)**, **왼쪽으로 2.0m (`dy: 2.0`)** 이동.
+     * 동시에 고도를 **1.0m 추가 상승 (`dz: 1.0`)**하여 **총 고도 5.0m**에 도달 및 호버링 안정화 확인.
+  3. 입체 이동 완료 즉시 대기열에서 착륙 명령 꺼냄 ➔ `LAND` 수행:
+     * 현재 5.0m 공중 위치에서 지면으로 자동 하강 ➔ 착륙 센서 감지(`landed == True`) ➔ 모터 시동 꺼짐(Disarm) ➔ 상태가 `IDLE`로 복귀.
+
+---
+
 
 ## 🛡️ 안전 가드 작동 테스트 (이륙 전 이동 시도)
 
