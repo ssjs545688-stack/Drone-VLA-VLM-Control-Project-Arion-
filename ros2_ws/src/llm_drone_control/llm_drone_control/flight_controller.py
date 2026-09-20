@@ -186,6 +186,9 @@ class FlightController(Node):
             # 이륙 시점의 실제 바닥(current_z)을 기준으로 목표 고도 계산 (PX4 NED: 고도 상승은 -Z 방향)
             self.home_z = self.current_z
             self.target_z = self.home_z - abs(alt)
+            self.target_x = self.current_x
+            self.target_y = self.current_y
+            self.target_yaw = self.current_yaw
             self.heartbeat_counter = 0
             self.arrival_counter = 0
             self.flight_state = "ARMING"
@@ -256,7 +259,7 @@ class FlightController(Node):
         # 2. 비행 상태 머신 처리
         if self.flight_state == "ARMING":
             # PX4 규칙: Offboard 진입 전 최소 10회 이상의 Setpoint/Heartbeat 필요
-            self.publish_position_setpoint(0.0, 0.0, self.target_z)
+            self.publish_position_setpoint(self.target_x, self.target_y, self.target_z, self.target_yaw)
             self.heartbeat_counter += 1
 
             if self.heartbeat_counter == 15:
@@ -277,7 +280,7 @@ class FlightController(Node):
 
         elif self.flight_state == "TAKEOFF":
             # 목표 고도로 지속적 Setpoint 발행
-            self.publish_position_setpoint(0.0, 0.0, self.target_z, self.target_yaw)
+            self.publish_position_setpoint(self.target_x, self.target_y, self.target_z, self.target_yaw)
 
             # 고도 오차가 0.2m 이내로 들어오고, 1초(10회) 동안 안정적으로 유지될 때 호버링 전환
             altitude_error = abs(self.current_z - self.target_z)
