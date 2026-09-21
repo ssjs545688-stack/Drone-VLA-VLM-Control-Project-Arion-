@@ -1,0 +1,23 @@
+===========의존성 추가설치==========
+pip install fastapi uvicorn
+==================================
+
+/ros2_ws/
+colcon build
+source install/setup.bash
+
+ros2 run llm_drone_contreol smartphone_bridge
+
+ex)
+============================================================
+Drone Smartphone Bridge
+============================================================
+[INFO] [1789978311.922716307] [smartphone_bridge]: Smartphone Bridge started
+[INFO] [1789978311.923206292] [smartphone_bridge]: Publishing topic: /voice_command
+
+Web server : http://0.0.0.0:8000
+ROS2 topic : /voice_command
+
+📱 Smartphone URL : http://192.168.3.117:8000                     ----------> 스마트폰 url
+============================================================
+
