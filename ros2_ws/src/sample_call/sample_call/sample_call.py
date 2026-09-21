@@ -8,7 +8,7 @@ from guide_interfaces.srv import GuideLLM   # ROS 2 Service 인터페이스 가�
 class LLMService(Node):
     def __init__(self):
         super().__init__("llm_service")
-        model_path=Path.home()/"Drone-VLA-VLM-Control-Project-Arion-"/"models"/"Qwen3-0.6B"
+        model_path=Path.home()/"Drone-VLA-VLM-Control-Project-Arion-"/"models"/"Qwen3-1.7B"
 
         # Qwen3 토크나이저 & llm 모델 로드
         self.tokenizer=AutoTokenizer.from_pretrained(model_path,local_files_only=True)
@@ -17,7 +17,7 @@ class LLMService(Node):
         # llm ROS 2 Service 서버 생성
         self.srv=self.create_service(GuideLLM,"llm",self.callback)
 
-        self.get_logger().info("Qwen3-0.6B LLM Service Ready")
+        self.get_logger().info("Qwen3-1.7B LLM Service Ready")
 
     def callback(self,request,response):
         # 문자열(request.prompt)을 LLM이 사용하는 chat message 형식으로 변환

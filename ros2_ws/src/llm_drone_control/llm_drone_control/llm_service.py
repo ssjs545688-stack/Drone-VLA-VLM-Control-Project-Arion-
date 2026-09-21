@@ -30,8 +30,8 @@ class LLMService(Node):
             config=yaml.safe_load(f) or {}
 
         model_config=config.get("model",{})
-        model_path=Path(model_config.get("path","~/Drone-VLA-VLM-Control-Project-Arion-/models/Qwen3-0.6B")).expanduser()
-        lora_path=Path(model_config.get("lora_path","~/Drone-VLA-VLM-Control-Project-Arion-/models/finetuned_qwen3_drone_lora")).expanduser()
+        model_path=Path(model_config.get("path","~/Drone-VLA-VLM-Control-Project-Arion-/models/Qwen3-1.7B")).expanduser()
+        lora_path=Path(model_config.get("lora_path","~/Drone-VLA-VLM-Control-Project-Arion-/models/finetuned_qwen3-1.7B_drone_lora")).expanduser()
         max_new_tokens=model_config.get("max_new_tokens",64)
         do_sample=model_config.get("do_sample",False)
         torch_dtype=model_config.get("torch_dtype","auto")
@@ -72,7 +72,7 @@ class LLMService(Node):
         self.response_pub=self.create_publisher(String,"llm_response",10)
         self.srv=self.create_service(GuideLLM,"llm",self.callback)
 
-        self.get_logger().info("Qwen3-0.6B + LoRA LLM Service Ready")
+        self.get_logger().info("Qwen3-1.7B + LoRA LLM Service Ready")
 
     def callback(self,request,response):
         messages=[
