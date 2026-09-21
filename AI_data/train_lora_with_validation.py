@@ -132,7 +132,7 @@ def preprocess(examples):
         )
 
         full_enc = tokenizer(full_text, truncation=True, max_length=2048, add_special_tokens=False)
-        prompt_enc = tokenizer(prompt_text, truncation=True, max_length=2048, add_special_tokens=False)
+        prompt_enc = tokenizer(prompt_text, truncation=False, add_special_tokens=False)
 
         input_ids = full_enc["input_ids"]
         attention_mask = full_enc["attention_mask"]
