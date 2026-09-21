@@ -8,18 +8,27 @@
 
 ## 📝 프로젝트 정보
 
-**조장:** 신현수  
-**VLA 파인튜닝:** 정진한, 최지호  
-**함수 스키마 담당:** 김태형  
+**조장:** 신현수
+**VLA 파인튜닝:** 정진한, 최지호
+**함수 스키마 담당:** 김태형, 정원혁
 **지도강사:** 박승휘
 
 ## 📚 문서 목차
 
-프로젝트 문서와 관련 자료를 아래 목차에서 바로 확인할 수 있습니다.
-
-| 문서 | 설명 |
-|---|---|
-| [README.md](README.md) | 프로젝트 개발 일지 및 현재 진행 상황 |
+- [프로젝트 소개](#-프로젝트-소개)
+- [프로젝트 정보](#-프로젝트-정보)
+- [주요 기능](#-주요-기능)
+- [시스템 구성](#-시스템-구성)
+- [온디바이스 대상](#-온디바이스-대상)
+- [환경 요구 사항](#-환경-요구-사항)
+- [설치 및 빌드](#-설치-및-빌드)
+- [실행 가이드](#-실행-가이드)
+- [명령 처리 방식](#-명령-처리-방식)
+- [좌표계와 안전 주의사항](#-좌표계와-안전-주의사항)
+- [학습 및 평가](#-학습-및-평가)
+- [참고 저장소 및 사용 도구](#-참고-저장소-및-사용-도구)
+- [향후 계획](#-향후-계획)
+- [프로젝트 개발 일지](#-프로젝트-개발-일지)
 
 
 
@@ -55,6 +64,7 @@
 ### [2026.09.17] 데이터셋 보강
 
 - 파인튜닝 결과를 평가하고 train, validation, test 데이터셋 형식 분리
+- 모델의 변경을 고려 (`Qwen3-0.6B`-> `Qwen3-1.7B` )
 
 ```text
 사용자 자연어 명령
@@ -63,7 +73,7 @@
 ROS 2 /llm 서비스
         |
         v
-Qwen3-0.6B + LoRA 로컬 추론
+Qwen3-1.7B + LoRA 로컬 추론
         |
         v
 <tool_call> JSON 응답
@@ -75,12 +85,19 @@ flight_controller
 PX4 ROS 2 토픽 -> PX4 SITL -> Gazebo
 ```
 
+### [2026.09.18] 
+- STT node 추가 및 의존성 추가
+- llm_drone_control패키지 통합런치 
+- 함수 스키마 수정
+
 ## ✨ 주요 기능
 
-- Qwen3-0.6B 기반 로컬 자연어 명령 해석
+- Qwen3-1.7B 기반 로컬 자연어 명령 해석
 - LoRA 파인튜닝 모델을 이용한 드론 명령 스키마 응답
 - `takeoff`, `land` Tool Call 기반 PX4 Offboard 제어
 - ROS 2 서비스 `/llm` 및 응답 토픽 `/llm_response` 사용
+- `stt_node`를 통한 마이크 음성 입력 및 Whisper 기반 STT
+- LLM 요청과 응답을 `llm_logs/` 디렉터리에 파일로 저장
 - PX4 NED 좌표계 기반 고도 제어
 - PX4 상태, 위치, 착륙 상태를 이용한 비행 상태 관리
 - 학습, 검증, 추론 코드를 분리한 프로젝트 구조
@@ -103,7 +120,8 @@ PX4 ROS 2 토픽 -> PX4 SITL -> Gazebo
 ```text
 ros2_ws/src/llm_drone_control/
 ├── llm_drone_control/
-│   ├── llm_service.py       # 로컬 Qwen3 + LoRA 추론 서비스
+│   ├── llm_service.py       # 로컬 Qwen3 + LoRA 추론 및 메시지 로그 저장
+│   ├── stt_node.py          # 마이크 음성 입력 및 LLM 요청 노드
 │   ├── flight_controller.py # PX4 Offboard 제어 노드
 │   └── schema.py            # Tool Call 스키마 및 시스템 프롬프트
 ├── config/model.yaml        # 모델 및 LoRA 경로 설정
@@ -112,17 +130,19 @@ ros2_ws/src/llm_drone_control/
 └── setup.py
 
 models/
-├── Qwen3-0.6B(Qwen3-1.7B)/                    # 기본 로컬 모델
-└── finetuned_qwen3_drone_lora/    # 드론 명령 LoRA 어댑터
+├── Qwen3-1.7B/                    # 기본 로컬 모델
+└── finetuned_qwen3-1.7B_drone_lora/    # 드론 명령 LoRA 어댑터
 ```
 
-`model.yaml`은 기본적으로 다음 경로를 사용합니다.
+`model.yaml`의 현재 기본 설정은 다음 경로를 사용합니다.
 
 ```yaml
 model:
-  path: "~/Drone-VLA-VLM-Control-Project-Arion-/models/Qwen3-0.6B"
-  lora_path: "~/Drone-VLA-VLM-Control-Project-Arion-/models/finetuned_qwen3_drone_lora"
+  path: "~/Drone-VLA-VLM-Control-Project-Arion-/models/Qwen3-1.7B"
+  lora_path: "~/Drone-VLA-VLM-Control-Project-Arion-/models/finetuned_qwen3-1.7B_drone_lora"
 ```
+
+Qwen3-1.7B 모델과 해당 LoRA 어댑터를 사용할 경우 `model.yaml`의 `path`와 `lora_path`를 실제 모델 디렉터리에 맞게 변경합니다.
 
 따라서 실제 온디바이스 배포 시에는 다음 항목이 필요합니다.
 
@@ -131,6 +151,7 @@ model:
 - `Qwen3-0.6B` 모델 파일
 - `finetuned_qwen3_drone_lora` LoRA 파일
 - PyTorch, Transformers, PEFT, Accelerate, PyYAML
+- `SpeechRecognition`, `openai-whisper`, `PyAudio` 음성 입력 의존성
 - PX4와 통신할 수 있는 ROS 2 DDS 네트워크
 
 ### 온디바이스에 포함되지 않는 폴더와 구성
@@ -173,7 +194,10 @@ python3 -m pip install --user \
   "transformers==4.51.3" \
   "accelerate>=0.34.2" \
   "peft" \
-  "pyyaml"
+        "pyyaml" \
+        "SpeechRecognition" \
+        "openai-whisper" \
+        "PyAudio"
 ```
 
 ### 2. ROS 2 workspace 빌드
@@ -223,10 +247,19 @@ source install/setup.bash
 ros2 launch llm_drone_control drone_control.launch.py
 ```
 
-현재 launch 파일은 다음 두 노드를 실행합니다.
+현재 통합 launch 파일은 다음 세 노드를 실행합니다.
 
 - `llm_service`: 로컬 Qwen3 + LoRA 모델을 로드하고 `/llm` 서비스를 제공합니다.
 - `flight_controller`: `/llm_response`를 받아 PX4 Offboard 제어 토픽을 발행합니다.
+- `stt_node`: 엔터 입력 후 마이크 음성을 인식해 `/llm` 서비스로 전달합니다.
+
+`stt_node` 실행 방법:
+
+1. 통합 launch 실행 후 STT 노드 터미널에서 엔터를 누릅니다.
+2. 안내 메시지가 표시되면 한국어 음성 명령을 말합니다.
+3. 음성 인식 결과가 `/llm` 서비스로 전달되고, LLM 응답이 `/llm_response`로 발행됩니다.
+
+LLM 서비스는 실행 위치를 기준으로 `llm_logs/` 디렉터리를 생성합니다. 실행할 때마다 `llm_log_YYYYMMDD_HHMMSS.log` 파일을 만들고, 각 요청의 `[질문]`과 `[답변]`을 추가 저장합니다.
 
 ### 명령 요청
 
@@ -257,6 +290,10 @@ ros2 topic echo /llm_response
 |---|---|
 | `takeoff` | 현재 위치를 기준으로 지정 고도까지 이륙 |
 | `land` | PX4 착륙 명령 실행 |
+| `move` | 상대 이동, 상대 고도 변화 및 기수 회전 |
+| `goto_history` | 과거 위치로 복귀 (직전 위치,최초 출발지) |
+| `reverse_plan` | 경로를 역순으로 되짚어 복귀 |
+
 
 ## 🧭 좌표계와 안전 주의사항
 
@@ -314,7 +351,7 @@ train/
 ## 🔮 향후 계획
 
 - [ ] 카메라 영상과 VLM을 이용한 환경 인식
-- [ ] 음성 입력 및 Whisper STT 연동
+- [x] 음성 입력 및 Whisper STT 연동
 - [ ] 온디바이스 추론 최적화 및 양자화
 - [ ] geofence, failsafe, 비상 정지 등 안전 기능 강화
 - [ ] 실기체용 Pixhawk 및 companion computer 연동
