@@ -227,7 +227,73 @@ source ~/Drone-VLA-VLM-Control-Project-Arion-/ros2_ws/install/setup.bash
 
 ---
 
-### 6단계: 착륙 (Land)
+### 6단계: 경로 역순 복귀 및 자동 착륙 (reverse_plan) ⭐
+
+지나온 모든 경유지를 시간 역순으로 되짚어가며 출발지로 되돌아온 후, **자동으로 안전 착륙(land)까지 원스톱으로 완수**합니다. (복도, 실내, 장애물 환경 필수)
+백트래킹 비행을 검증하기 위해, 경유지(A ➔ B ➔ C ➔ D)를 순서대로 생성한 뒤 복귀를 실행합니다.
+
+#### 1) 이륙 (고도 2.0m, 지점 A)
+* **[방법 A] 직접 토픽 발행:**
+  ```bash
+  ros2 topic pub --once /llm_response std_msgs/msg/String "{data: '<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.0}}</tool_call>'}"
+  ```
+* **[방법 B] LLM 모델 연동 자연어 명령:**
+  ```bash
+  ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '2미터 높이로 이륙해줘'}"
+  ```
+* **확인**: 고도 2m 안착. 최초 출발점 `Waypoint #0 (X=0.00m, Y=0.00m)` 등록 확인.
+
+#### 2) 앞으로 3.0m 이동 (지점 B)
+* **[방법 A] 직접 토픽 발행:**
+  ```bash
+  ros2 topic pub --once /llm_response std_msgs/msg/String "{data: '<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 3.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>'}"
+  ```
+* **[방법 B] LLM 모델 연동 자연어 명령:**
+  ```bash
+  ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '앞으로 3미터 전진해'}"
+  ```
+* **확인**: X=+3.0m 안착. `Waypoint #1` 저장 확인.
+
+#### 3) 왼쪽으로 2.0m 이동 (지점 C)
+* **[방법 A] 직접 토픽 발행:**
+  ```bash
+  ros2 topic pub --once /llm_response std_msgs/msg/String "{data: '<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 2.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>'}"
+  ```
+* **[방법 B] LLM 모델 연동 자연어 명령:**
+  ```bash
+  ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '왼쪽으로 2미터 이동해줘'}"
+  ```
+* **확인**: Y=+2.0m 안착. `Waypoint #2` 저장 확인.
+
+#### 4) 앞으로 2.0m 더 이동 (지점 D)
+* **[방법 A] 직접 토픽 발행:**
+  ```bash
+  ros2 topic pub --once /llm_response std_msgs/msg/String "{data: '<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 2.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>'}"
+  ```
+* **[방법 B] LLM 모델 연동 자연어 명령:**
+  ```bash
+  ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '앞으로 2미터 가줘'}"
+  ```
+* **확인**: X=+5.0m 안착. `Waypoint #3` 저장 확인. (현재 위치: 지점 D)
+
+#### 5) 🌟 경로 역순 복귀 및 자동 착륙 실행!
+* **[방법 A] 직접 토픽 발행:**
+  ```bash
+  ros2 topic pub --once /llm_response std_msgs/msg/String "{data: '<tool_call>{\"name\": \"reverse_plan\", \"arguments\": {}}</tool_call>'}"
+  ```
+* **[방법 B] LLM 모델 연동 자연어 명령:**
+  ```bash
+  ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '왔던 경로로 되돌아가'}"
+  # 또는
+  ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '지나온 길을 그대로 거꾸로 따라가'}"
+  # 또는
+  ros2 service call /llm guide_interfaces/srv/GuideLLM "{prompt: '지금까지 이동한 경로를 역순으로 되짚어가줘'}"
+  ```
+* **결과 확인**: 드론이 $D \rightarrow C \rightarrow B \rightarrow A$(최초 출발지) 순으로 역순 비행하여 도착한 뒤, 큐의 마지막 미션인 `land`가 자동으로 실행되어 지면에 착륙 후 모터 자동 정지(`IDLE`) 완수!
+
+---
+
+### 7단계: 착륙 (Land)
 
 #### 현재 위치에서 지면으로 자동 착륙
 * **[방법 A] 직접 토픽 발행:**

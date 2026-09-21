@@ -296,6 +296,28 @@ class FlightController(Node):
                 f"목표(NED): X={self.target_x:.2f}m, Y={self.target_y:.2f}m, Z={self.target_z:.2f}m"
             )
 
+        elif func_name == "_goto_waypoint":
+            # [내부 전용 명령] 저장된 절대 로컬 좌표(NED)로 직접 이동
+            if self.flight_state not in ["HOVER", "MOVE"]:
+                self.get_logger().warn(f"⚠️ [명령 거부] 기체가 비행 중이 아닙니다 (상태: {self.flight_state}).")
+                self.mission_queue.clear()
+                return
+
+            self.target_x = float(args.get("x", self.target_x))
+            self.target_y = float(args.get("y", self.target_y))
+            self.target_z = float(args.get("z", self.target_z))
+            self.target_yaw = float(args.get("yaw", self.target_yaw))
+
+            self.is_recovering = True  # 복귀 이동 중 플래그 유지 (스택 재기록 차단)
+            self.arrival_counter = 0
+            self.flight_state = "MOVE"
+
+            yaw_deg = math.degrees(self.target_yaw)
+            self.get_logger().info(
+                f"🧭 [경로 복귀 비행] 웨이포인트 이동: X={self.target_x:.2f}m, Y={self.target_y:.2f}m, "
+                f"Z={self.target_z:.2f}m, Yaw={yaw_deg:.1f}° (남은 복귀 미션: {len(self.mission_queue)}개)"
+            )
+
         elif func_name == "goto_history":
             # 🛡️ 안전 가드: 공중에 비행 중일 때만 복귀 명령 허용
             if self.flight_state not in ["HOVER", "MOVE"]:
@@ -363,6 +385,59 @@ class FlightController(Node):
             else:
                 self.get_logger().warn(f"⚠️ 알 수 없는 recall 인자입니다: {recall_type}")
                 self.execute_next_mission()
+
+        elif func_name == "reverse_plan":
+            # 🛡️ 안전 가드: 공중에 비행 중일 때만 복귀 명령 허용
+            if self.flight_state not in ["HOVER", "MOVE"]:
+                self.get_logger().warn(
+                    f"⚠️ [명령 거부] 기체가 비행 중이 아닙니다 (현재 상태: {self.flight_state})."
+                )
+                self.mission_queue.clear()
+                return
+
+            # 스택에 최소 2개 이상의 좌표가 있어야 거슬러 올라갈 경로가 있음
+            if len(self.waypoint_history) <= 1:
+                self.get_logger().warn("⚠️ [경로 복귀 불가] 이미 최초 출발 위치에 있거나 이동 경로가 없습니다.")
+                self.execute_next_mission()
+                return
+
+            # 1. 현재 머물고 있는 지점을 제외하고, 지나온 이전 지점들을 시간 역순으로 추출
+            backtrack_points = list(reversed(self.waypoint_history[:-1]))
+            total_steps = len(backtrack_points)
+
+            self.get_logger().info(
+                f"🔄 [경로 역순 복귀 시작] 총 {total_steps}개의 이전 경유지를 순서대로 되짚어 출발지로 복귀합니다!"
+            )
+
+            # 2. 기존 대기열 비우기 (복귀 우선권 부여)
+            self.mission_queue.clear()
+
+            # 3. 역순 웨이포인트들을 미션 큐에 순차적으로 적재
+            for i, pt in enumerate(backtrack_points):
+                self.mission_queue.append({
+                    "name": "_goto_waypoint",
+                    "arguments": {
+                        "x": pt[0],
+                        "y": pt[1],
+                        "z": pt[2],
+                        "yaw": pt[3]
+                    }
+                })
+
+            # 4. 🛬 [핵심] 최초 출발지 복귀 즉시 자동으로 안전 착륙(land)까지 수행하도록 큐 맨 끝에 land 추가!
+            self.mission_queue.append({
+                "name": "land",
+                "arguments": {}
+            })
+            self.get_logger().info("🛬 [착륙 미션 연계] 최초 출발지 복귀 후 자동 착륙(land) 미션이 큐의 마지막에 등록되었습니다.")
+
+            # 5. 스택을 원점(최초 출발지) 하나로 선제적 초기화 (복귀 완료 후 깨끗한 상태 유지)
+            home_point = self.waypoint_history[0]
+            self.waypoint_history = [home_point]
+            self.is_recovering = True
+
+            # 6. 첫 번째 역순 경유지로 즉시 이동 시작!
+            self.execute_next_mission()
 
         elif func_name == "land":
             # 착륙 시작 시 비행 안전을 위해 대기열 비움
@@ -512,11 +587,16 @@ class FlightController(Node):
                             f"X={self.target_x:.2f}m, Y={self.target_y:.2f}m, Z={self.target_z:.2f}m (스택 크기: {len(self.waypoint_history)})"
                         )
                     else:
-                        # 복귀 완료 후 플래그 초기화
-                        self.is_recovering = False
-                        self.get_logger().info(
-                            f"📌 [히스토리 복귀 완료] 과거 목표 지점 복귀 완료 (현재 스택 크기: {len(self.waypoint_history)})"
-                        )
+                        # 대기열에 더 이상 복귀 미션이 없으면 최종 출발지 복귀 완료!
+                        if not self.mission_queue:
+                            self.is_recovering = False
+                            self.get_logger().info(
+                                f"🏁 [경로 복귀 완료] 최종 목표 지점에 안전하게 도착했습니다. (스택 원점 유지)"
+                            )
+                        else:
+                            self.get_logger().info(
+                                f"📍 [경유지 도달] 다음 역순 경유지로 계속 비행합니다... (남은 복귀 경로: {len(self.mission_queue)}개)"
+                            )
 
                     if self.mission_queue:
                         self.get_logger().info("📋 다음 대기 미션 실행...")
