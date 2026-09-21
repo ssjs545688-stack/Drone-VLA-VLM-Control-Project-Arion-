@@ -1,0 +1,3652 @@
+{
+  "config": {
+    "model_id": "../models/qwen3-1.7B-drone-merged",
+    "train_dataset": "./dataset/train.jsonl",
+    "validation_dataset": "./dataset/val.jsonl",
+    "test_dataset": "./dataset/test.jsonl",
+    "eval_splits": [
+      "validation",
+      "test"
+    ],
+    "max_new_tokens": 256,
+    "do_sample": false
+  },
+  "results": {
+    "validation": {
+      "metrics": {
+        "total": 406,
+        "tool_call_samples": 370,
+        "negative_samples": 36,
+        "tool_call_parse_rate": 1.0,
+        "tool_name_accuracy": 0.9675675675675676,
+        "argument_accuracy": 0.9405405405405406,
+        "exact_match_accuracy": 0.9458128078817734,
+        "tool_call_exact_match_accuracy": 0.9405405405405406,
+        "refusal_accuracy": 1.0,
+        "parameter_accuracy": {
+          "recall": 1.0,
+          "altitude": 0.9157894736842105,
+          "dx": 0.9973684210526316,
+          "dy": 0.9868421052631579,
+          "dz": 0.9921052631578947,
+          "d_yaw": 0.9921052631578947
+        }
+      },
+      "errors": [
+        {
+          "index": 11,
+          "input": "드론을 약 4미터 높이로 띄워 마친 뒤 현재 높이에서 백구십육센티미터 정도만큼 상승해 마친 뒤 왼편 방향을 향해 4.9미터만큼만큼 이동시켜",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 1.96, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 4.9, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.96, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 4.9, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 1.96,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 4.9,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.96,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 4.9,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 16,
+          "input": "기체의 고도를 3.1m 정도만큼 높여 하고 기체를 오른쪽으로 이백팔십구센티미터 정도만큼 보내",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 3.1, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -2.89, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -2.18, \"dz\": 3.1, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 3.1,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -2.89,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -2.18,
+                "dz": 3.1,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 19,
+          "input": "드론을 이점이미터 정도 높이로 띄워",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.2}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.2
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 34,
+          "input": "지면을 떠나 약 1.1미터까지 올라가 다음으로 우회전해서 18도만큼 돌아",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.1}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -18.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 1.1, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -18.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.1
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -18.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 1.1,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -18.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 77,
+          "input": "약 1.6미터 고도로 비행을 개시해 이후에 좌측 방면으로 사점육미터 정도만큼 비행해 이후에 오른편 방향을 향해 261센티미터쯤만큼 이동시켜",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.6}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 4.6, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -2.61, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 1.6, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -2.61, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.6
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 4.6,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -2.61,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 1.6,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -2.61,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 86,
+          "input": "지면을 떠나 약 5미터까지 올라가",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 5.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 5.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 5.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 5.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 89,
+          "input": "기체를 시계 방향으로 62도 전환해 다음으로 뒤 방향으로 320cm 정도의 거리를 이동해",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -62.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -3.2, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -3.2, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -62.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -62.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -3.2,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -3.2,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -62.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 97,
+          "input": "지면을 떠나 약 4.5미터까지 올라가",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.5}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 4.5, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.5
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 4.5,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 145,
+          "input": "3.6m 정도 고도까지 올라가면서 이륙해 다음으로 기체 왼편으로 469cm 정도의 거리를 이동해 다음으로 기체 오른쪽으로 영점구미터 정도만큼 가줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.6}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 4.69, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -0.9, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.6}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 4.69, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -0.09, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.6
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 4.69,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -0.9,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.6
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 4.69,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -0.09,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 155,
+          "input": "지면을 떠나 약 4.2미터까지 올라가",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.2}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 4.2, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.2
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 4.2,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 156,
+          "input": "기체를 뒤로 약 0.9미터만큼 보내 하고 351센티미터쯤만큼 아래쪽으로 이동해",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -0.9, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -3.51, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -0.9, \"dy\": 0.0, \"dz\": -3.51, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -0.9,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -3.51,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -0.9,
+                "dy": 0.0,
+                "dz": -3.51,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 163,
+          "input": "지면을 떠나 4.5m 정도까지 올라가 마친 뒤 이점삼미터 정도만큼 좌측 방향으로 이동해 마친 뒤 비행을 종료하고 착륙해",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.5}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 2.3, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 4.5, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 2.3, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.5
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 2.3,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 4.5,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 2.3,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 164,
+          "input": "지면을 떠나 약 2.9미터까지 올라가",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.9}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 2.9, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.9
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 2.9,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 190,
+          "input": "현재 위치를 기준으로 영점육미터 정도만큼 고도를 올려",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.6, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 6.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.6,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 6.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 200,
+          "input": "백사센티미터 정도만큼 우측 방향으로 이동해",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -1.04, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -1.4, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -1.04,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -1.4,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 205,
+          "input": "71도만큼 오른쪽으로 방향을 전환해 그 후에 7.1m 정도만큼 좌측 방향으로 이동해",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -71.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 7.1, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -7.1}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 7.1, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -71.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 7.1,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -7.1
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 7.1,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 228,
+          "input": "비행 높이를 영점오미터 정도만큼 낮춰",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -0.5, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -5.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -0.5,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -5.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 251,
+          "input": "고도 약 1.3미터에서 비행을 시작해 이어서 기체를 반시계 방향으로 88도 전환해 이어서 오른쪽 방향으로 백삼십칠센티미터 정도의 거리를 이동해 이어서 비행을 종료하고 착륙해",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.3}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 88.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -1.37, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.3}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 88.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 1.37, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.3
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 88.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -1.37,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.3
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 88.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 1.37,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 252,
+          "input": "우측으로 81도 방향 전환해 그 후에 기체 앞쪽으로 이십칠센티미터 정도만큼 이동시켜 그 후에 현재 자리에서 지상으로 내려",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -81.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.27, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -81.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.27, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -81.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.27,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -81.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.27,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 290,
+          "input": "후방을 향해 약 5미터만큼 비행해 다음으로 비행 고도를 약 0.5미터만큼 높여줘",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -5.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.5, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -5.0, \"dy\": 0.0, \"dz\": 0.5, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -5.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.5,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -5.0,
+                "dy": 0.0,
+                "dz": 0.5,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 305,
+          "input": "우측으로 46도 방향 전환해 하고 기체 정면으로 251cm 정도만큼 가줘",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -46.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 2.51, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -46.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 2.51, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -46.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 2.51,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -46.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 2.51,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 345,
+          "input": "3.7미터만큼 고도로 비행을 개시해",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.7}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 3.7, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.7
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 3.7,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "test": {
+      "metrics": {
+        "total": 610,
+        "tool_call_samples": 550,
+        "negative_samples": 60,
+        "tool_call_parse_rate": 0.9963636363636363,
+        "tool_name_accuracy": 0.9472727272727273,
+        "argument_accuracy": 0.8854545454545455,
+        "exact_match_accuracy": 0.8967213114754098,
+        "tool_call_exact_match_accuracy": 0.8854545454545455,
+        "refusal_accuracy": 1.0,
+        "parameter_accuracy": {
+          "altitude": 0.9266666666666666,
+          "dx": 0.9447619047619048,
+          "dy": 0.9733333333333334,
+          "dz": 0.9542857142857143,
+          "d_yaw": 0.9828571428571429,
+          "recall": 1.0
+        }
+      },
+      "errors": [
+        {
+          "index": 1,
+          "input": "지상에서 출발해서 2.7미터만큼의 거리 높이에 도달해 그 후에 현재 고도에서 4.1미터가량만큼 더 낮아지도록 이동해바로 해줘 그 후에 지금 향한 방향에서 우회전 각도를 칠십구도로 줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.7}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -4.1, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -79.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 2.7, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -4.1, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -79.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.7
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -4.1,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -79.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 2.7,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -4.1,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -79.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "input": "우선 출발 고도를 2.7미터만큼의 거리로 정하고 떠올라그대로 해줘 그리고 야, 기체의 측면 중 왼쪽으로 구십센티 남짓만큼 빠져나가",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.7}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.9, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.7}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.9, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.7
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.9,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.7
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.9,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "input": "지상에서 출발해서 4.1미터 정도의 거리 높이에 도달해지금 해줘 이어서 자 이제 현재 자세를 기준으로 오른쪽으로 이백삼십팔센티가량만큼 이동해",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.1}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -2.38, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -2.38, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.1
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -2.38,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -2.38,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 33,
+          "input": "기체의꼬리 쪽을 향해 사백육십센티가량만큼 물러나해주면 돼",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -4.6, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 4.6, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -4.6,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 4.6,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 43,
+          "input": "자 이제 지면에서 벗어나 3.3미터만큼의 거리 높이에 자리 잡아좀 해줘 다음 동작으로 자, 기체가 향하는 방위를 반시계 방향으로 백육십육도 돌려알겠지? 다음 동작으로 자 이제 수평 좌표를 유지한 채 479센티 남짓만큼 아래로 옮겨",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.3}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 166.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -4.79, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 3.3, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -4.79, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.3
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 166.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -4.79,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 3.3,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -4.79,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 44,
+          "input": "이번엔 기체의 전방 축으로 일미터남짓만큼 움직여",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 1.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 1.2, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 1.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 1.2,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 55,
+          "input": "출발 고도를 삼점일미터가량로 정하고 떠올라부탁할게 그 후에 오케이, 기체의 머리가 향한 쪽으로 삼점일미터 남짓만큼 나아가좀 해줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.1}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 3.1, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.1}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 3.1, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.1
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 3.1,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.1
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 3.1,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 58,
+          "input": "이륙 시 목표 높이는 2.8미터만큼의 거리로 해줘바로 처리해줘 앞 동작을 끝내고 전진 방향을 거슬러 2.6미터 정도의 거리만큼 이동해부탁할개 앞 동작을 끝내고 기체 앞쪽 공간을 향해 7.4미터만큼의 거리만큼 나아가",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.8}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -2.6, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 7.4, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.8}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -2.6, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 7.4, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.8
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -2.6,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 7.4,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.8
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -2.6,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 7.4,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 61,
+          "input": "드론아 기체 앞쪽 공간을 향해 3미터만큼의 거리만큼 나아가 다음 단계로 기체의 높이 축을 따라 65센티가량만큼 내려가부탁할께 다음 단계로 우선 지금 머물고 있는 곳에서 착지해",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 3.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -0.65, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 3.0, \"dy\": 0.0, \"dz\": -0.65, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 3.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -0.65,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 3.0,
+                "dy": 0.0,
+                "dz": -0.65,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 80,
+          "input": "오케이, 사점팔미터 남짓 높이를 목표로 이륙 절차를 진행해좀 해줘 앞 동작을 끝내고 오케이, 지금 향하고 있는 쪽으로 2.7미터가량의 거리를 가줘좀 해줘 앞 동작을 끝내고 지금 있는 곳에서 비행을 마쳐",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.8}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 2.7, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.8}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 2.7, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.8
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 2.7,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.8
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 2.7,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 91,
+          "input": "오케이, 바라보고 있는 쪽을 향해 35센티미터쯤 되는 거리만큼 전진시켜 그 다음 동작으로 지금 있는 지점에서 위로 4.3미터 정도의 거리만큼 떠올라 그 다음 동작으로 지금 더 이상 날지 말고 착륙 절차를 진행해",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.35, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 4.3, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.35, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.3}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.35,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 4.3,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.35,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.3
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 116,
+          "input": "좋아, 그럼 지상에서 출발해서 삼점일미터가량 높이에 도달해 그리고 지금 바로 기체의 머리가 향한 쪽으로 사백칠십오센티가량만큼 나아가지금 해줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.1}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 4.75, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.1}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -4.75, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.1
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 4.75,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.1
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -4.75,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 121,
+          "input": "지금 바로 비행을 시작할 높이를 1.2미터만큼의 거리로 잡아줘부탁할게",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.2}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 1.2, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.2
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 1.2,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 133,
+          "input": "이번에는 기체의 꼬리 쪽을 향해 3.2미터가량만큼 물러나잘부탁해",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -3.2, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 3.2, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -3.2,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 3.2,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 155,
+          "input": "야, 바라보는 방향을 등지고 구십센티 남짓만큼 이동해 하고 나서 지금 기체가 바라보는 축을 시계 방향으로 칠십사도 돌려 부탁해",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -0.9, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -74.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.9, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -74.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -0.9,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -74.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.9,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -74.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 156,
+          "input": "지금 위치에서 수직으로 구십삼센티가량만큼 하강해 끝난 뒤에 바라보는 방향을기준으로 좌측에 이백사십구센티가량만큼 이동해빨리 해줘",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -0.93, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 2.49, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -0.93, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.249, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -0.93,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 2.49,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -0.93,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.249,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 161,
+          "input": "현재 자세에서 시계 방항으로 180도 꺾어 그 후에 야, 바라보는 방향을 등지고 일점팔미터가량만큼 이동해처리해줘",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -180.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -1.8, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -180.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 1.8, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -180.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -1.8,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -180.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 1.8,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 180,
+          "input": "이제 처음 뜰 때 4.9미터만큼의 거리 높이를 유지하도록 해바로 진행해줘 마친 다음 한번 전진 방향을 거슬러 268센티 남짓만큼 이동해빨리해줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.9}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -2.68, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.9}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -2.68, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.9
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -2.68,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.9
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -2.68,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 197,
+          "input": "자 이제 기체의 앞머리를 우측으로 백칠십이도 회전시켜그대로 해줘 바로 이어서 기체 앞부분이 가리키는 쪽으로 이백칠십센티 남짓 이동시켜바로 처리해줘 바로 이어서 오케이, 그 자리에 기체를 내려앉혀",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -172.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 2.7, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -172.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 2.77, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -172.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 2.7,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -172.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 2.77,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 230,
+          "input": "오케이, 이륙 시 목표 높이는 3.7미터가량로 해줘 그 뒤에 오케이, 기체의 머리가 향한 쪽으로 4.6미터쯤 되는 거리만큼 나아가바로 처리해줘 그 뒤에 기체의 좌우축에서 왼쪽으로 육점일미터가량 움직여바로 진행해줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.7}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 4.6, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 6.1, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.7}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 4.6, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 6.1, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.7
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 4.6,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 6.1,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.7
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 4.6,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 6.1,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 247,
+          "input": "바라보는 방향을 등지고 5.4미터쯤 되는 거리만큼 이동해",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -5.4, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 5.4, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -5.4,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 5.4,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 255,
+          "input": "자 이제 현재 고도에서 0.9미터쯤 되는 거리를 빼줘 다음 동작으로 왼쪽으로 선회하면서 오십팔도만큼 방향을 바꿔 부탁해 다음 동작으로 오케이, 현재 비행을 끝내고 안전하게 지면을 밟아 부탁해",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -0.9, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 58.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.9, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -58.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -0.9,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 58.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.9,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -58.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 263,
+          "input": "지면에서 벗어나 4.3미터 남짓높이에 자리 잡아",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.3}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 4.3, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.3
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 4.3,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 278,
+          "input": "잠깐, 지상에서 출발해서 4.9미터만큼의 거리 높이에 도달해 그 후에 일단 기체가 바라보는 축을 반시계 방향으로 97도 돌려그대로 해줘 그 후에 그럼 바로 기체 앞부분이 가리키는 쪽으로 이점이미터 남짓 이동시켜부탁드릴게 그 후에 지금 비행을 종료한 뒤 지면에 안착해한번 해줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.9}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 97.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 2.2, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 4.9, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 97.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 2.2, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.9
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 97.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 2.2,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 4.9,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 97.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 2.2,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 279,
+          "input": "그럼 지상에서 출발해서 2.2미터가량 높이에 도달해바로 해줘 그 다음 동작으로 수평 좌표를 유지하면서 일미터 남짓만큼 위로 옮겨바로 진행해줘 그 다음 동작으로 잠깐, 기체의 머리가 향한 쪽으로 442센티미터 정도의 거리만큼 나아가",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.2}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 1.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 4.42, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.2}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 1.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 4.42, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.2
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 1.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 4.42,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.2
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 1.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 4.42,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 283,
+          "input": "이번엔 지면에서 벗어나 삼점칠미터가량 높이에 자리 잡아한번 해줘 하고 나서 우선 기체의 꼬리 쪽을 향해 59센티미터 정도의 거리만큼 물러나",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.7}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -0.59, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.7}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -0.59, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.7
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -0.59,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.7
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -0.59,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 289,
+          "input": "지금 바로 지금 있는 지점에서 위로 5.7미터가량만큼 떠올라",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 5.7, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 5.7}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 5.7,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 5.7
+              }
+            }
+          ]
+        },
+        {
+          "index": 297,
+          "input": "잠깐, 출발 고도를 일점일미터 남짓로 정하고 떠올라좀 해줘 이후에는 오른쪽으로 선회하면서 백이십칠도만큼 방향을 바꿔 이후에는 일단 기체의 꼬리 쪽을 향해 472센티미터 정도의 거리만큼 물러나부탁할게 이후에는 그럼 그 자리에 기체를 내려앉혀",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.1}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -127.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -4.72, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.1}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -127.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 47.2}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.1
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -127.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -4.72,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.1
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -127.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 47.2
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 301,
+          "input": "그럼 지상에서 출발해서 2.5미터만큼의 거리 높이에 도달해 완료한 뒤 기체의 왼쪽 날개 쪽으로 7.5미터쯤 되는 거리만큼 가줘알겠지?",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.5}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 7.5, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 2.5, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 7.5, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.5
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 7.5,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 2.5,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 7.5,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 323,
+          "input": "드론아 출발 고도를 삼점일미터 남짓로 정하고 떠올라그대로 해줘 이어서 바라보고 있는 쪽을 향해 5.9미터 남짓만큼 점진시켜알겠지? 이어서 야, 현재 위치를 유지한 채 지상으로 내려와",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.1}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 5.9, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.1}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -5.9, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.1
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 5.9,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.1
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -5.9,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 336,
+          "input": "자, 지면에서 벗어나 3.7미터 정도의 거리 높이에 자리 잡아바로 처리해줘 끝난 뒤에 드론아 우측 회전으로 기체의 방향을 11도 변경해알겠지? 끝난 뒤에 한번 기체의 높이 축을 따라 육점팔미터가량만큼 내려가",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.7}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -11.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -6.8, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.7}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -6.8, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -11.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.7
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -11.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -6.8,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.7
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -6.8,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -11.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 377,
+          "input": "좋아, 그럼 지금 있는 곳에서 비행을 마쳐",
+          "expected": "<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "지원하지 않는 명령입니다.",
+          "true_calls": [
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": []
+        },
+        {
+          "index": 380,
+          "input": "이제 4.6미터가량 높이를 목표로 이륙 절차를 진행해좀 해줘 앞 동작을 끝내고 좋아, 그럼 기체의 꼬리 쪽을 향해 4.1미터 남짓만큼 물러나 앞 동작을 끝내고 바로 현재 자세를 기준으로 오른쪽으로 156센티 남짓만큼 이동해잘 부탁해",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.6}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -4.1, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -1.56, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.6}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -1.56, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.6
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -4.1,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -1.56,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.6
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -1.56,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 383,
+          "input": "왼쪽으로 선회하면서 백삼십칠도만큼 방향을 바꿔 그 뒤에 음... 기체의 좌우축에서 왼쪽으로 310센티미터쯤 되는 거리 움직여바로 처리해줘",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 137.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 3.1, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 137.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 3.17, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 137.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 3.1,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 137.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 3.17,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 394,
+          "input": "바로 지금 있는 곳에서 비행을 마쳐좀 해줘",
+          "expected": "<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "지원하지 않는 명령입니다.",
+          "true_calls": [
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": []
+        },
+        {
+          "index": 411,
+          "input": "출발 고도를 4.7미터쯤 되는 거리로 정하고 떠올라 하고 나서 바라보는 방향을 등지고 3미터 남짓만큼 이동해빨리 해줘 하고 나서 기체의 높이 축을 따라 392센티미터 정도의 거리만큼 올라가",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.7}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -3.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 3.92, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.7}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -3.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 3.92, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.7
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -3.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 3.92,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.7
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -3.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 3.92,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 416,
+          "input": "그럼 지상에서 출발해서 1미터 정도의 거리높이에 도달해 마친 다음 기체의 높이 축을 따라 3.4미터만큼의 거리만큼 내려가지금 해줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -3.4, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 1.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -3.4, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -3.4,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 1.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -3.4,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 422,
+          "input": "지상에서 출발해서 1.4미터만큼의 거리 높이에 도달해 끝난 뒤에 좋아, 그럼 기체의 좌측 면을 기준으로 6.8미터쯤 되는 거리만큼 옮겨줘바로 해줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.4}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 6.8, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 1.4, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 6.8, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.4
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 6.8,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 1.4,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 6.8,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 434,
+          "input": "지금 바로 기체의 꼬리 쪽을 향해 108센티가량만큼 물러나바로 해줘",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -1.08, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 1.08, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -1.08,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 1.08,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 440,
+          "input": "바로 현재 자세에서 반시계 방향으로 팔십도 꺾어 그리고 위치는 그대로 두고 수직 높이를 1.2미터만큼의 거리 줄여",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 80.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -1.2, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -1.2, \"d_yaw\": 80.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 80.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -1.2,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -1.2,
+                "d_yaw": 80.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 444,
+          "input": "일단 수평 좌표를 유지하면서231센티 남짓만큼 위로 옮겨바로 해줘 한 다음 좋아, 그럼 기체 앞부분이 가리키는 쪽으로 5.6미터가량 이동시켜처리해줘",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 2.31, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 5.6, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 2.31, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -5.6, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 2.31,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 5.6,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 2.31,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -5.6,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 445,
+          "input": "비행을 이미터가량 높이에서 시작하도록 준비해",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.5}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.5
+              }
+            }
+          ]
+        },
+        {
+          "index": 446,
+          "input": "좋아, 지금 향한 방향에서 우회전 각도를 백삼십사도로 줘 앞 동작을 끝내고 지금 있는 지점에서 아래로 3.2미터만큼의 거리만큼 내려와알겠지? 앞 동작을 끝내고 바로 현재 비행을 끝내고 안전하게 지면을 밟아",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -134.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -3.2, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -134.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -134.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -3.2,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -134.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 460,
+          "input": "일단 기체를 띄워 3.2미터 남짓 높이에서 비행을 시작해알겠지? 마친 다음 바로 기체 후방을기준으로 254센티 남짓만큼 움직여해주면 돼 마친 다음 기체의 헤딩 방향을 따라 이백칠센티가량만큼 보내줘그대로 해줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.2}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -2.54, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 2.07, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.2}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -2.54, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 2.07, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.2
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -2.54,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 2.07,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.2
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -2.54,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 2.07,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 474,
+          "input": "그럼 기체를 공중에 띄우고 5미터만큼의 거리까지 올려줘부탁할게 이후에는 좋아, 그럼 현재 기수 방향에서 좌측으로 오십사도 틀어좀 해줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 5.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 54.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 5.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 54.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 5.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 54.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 5.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 54.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 480,
+          "input": "음... 바라보는 방향을 등지고 이백이십육센티 남짓만큼 이덩해 한 다음 우측 회전으로 기체의 방향을 125도 변경해 부탁해",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -2.26, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -125.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 2.26, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -125.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -2.26,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -125.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 2.26,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -125.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 498,
+          "input": "지금 있는 지점에서 위로 사백삼십팔센티가량만큼떠올라빨리 해줘",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 4.38, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.38}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 4.38,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.38
+              }
+            }
+          ]
+        },
+        {
+          "index": 503,
+          "input": "출발 고도를 일점칠미터 남짓로 정하고 떠올라바로 해줘 다음 단계로 기체의 머리가 향한 쪽으로 이백사십일센티가량만큼 나아가지금 해줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.7}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 2.41, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.7}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 2.41, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.7
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 2.41,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.7
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 2.41,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 512,
+          "input": "지금 출발 고도를 1.8미터 남짓로 정하고 떠올라지금 해줘 완료한 뒤 음... 지금 향한 방향에서 뒤로 359센티가량만큼 빠져빨리 해줘 완료한 뒤 그럼 지금 있는 곳에서 비행을 마쳐",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.8}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -3.59, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.8}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -3.59, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.8
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -3.59,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.8
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -3.59,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 514,
+          "input": "지금 향한 방향에서 우회전 각도를 47도로 줘 완료한 뒤 지금 오른쪽 측방으로 2.4미터쯤 되는 거리만큼 평행 이동해알겠지? 완료한 뒤 자 이제 기체를 공중에서 지상으로 내려보내한번 해줘",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -47.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -2.4, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": -2.4, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -47.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -2.4,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": -2.4,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 522,
+          "input": "드론아 이륙 시 목표 높이는 2.3미터만큼의 거리로 해줘바로 처리해줘 이어서 이번에는 기체의 머리가 향한 쪽으로 오점사미터가량만큼 나아가부탁할게 이어서 그럼 현재 비행을 끝내고 안전하게 지면을 밟아",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.3}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 5.4, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.3}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.4, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.3
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 5.4,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.3
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.4,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 528,
+          "input": "지금 바로 위치는 그대로 두고 수직 높이를 영점구미터가량 줄여",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -0.9, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -9.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -0.9,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -9.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 531,
+          "input": "바로 기체의 방위를 왼쪽으로 백삼십팔도 조정해 부탁해 다음 동작으로 위치는 그대로 두고 수직 높이를 칠점삼미터 남짓 줄여",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 138.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -7.3, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -7.3, \"d_yaw\": 138.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 138.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -7.3,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -7.3,
+                "d_yaw": 138.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 539,
+          "input": "드론아 바라보는 방향을 등지고 6.7미터만큼의 거리만큼 이동해좀 해줘",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -6.7, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 6.7, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -6.7,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 6.7,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 546,
+          "input": "이번에는 바라보는 방향을 등지고 94센티미터 정도의 거리만큼 이동해바로 처리해줘 바로 이어서 잠깐, 기체의 높이 축을 따라 백십센티 남짓만큼 올라가바로 해줘",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -0.94, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 1.1, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.94, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 1.1, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -0.94,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 1.1,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.94,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 1.1,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 549,
+          "input": "이제 출발 고도를 사점팔미터가량로 정하고 떠올라잘 부탁해 앞 동작을 끝내고 자 이제 바라보고 있는 쪽을 향해 7미터만큼의 거리만큼 전진시켜그대로 해줘 앞 동작을 끝내고 오케이, 현재 비행을 끝내고 안전하게 지면을 밟아부탁할게",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.8}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 7.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.8}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 7.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.8
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 7.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.8
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 7.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 550,
+          "input": "기체를 공중에 띄우고 1.9미터 남짓까지 올려줘알겠지? 그리고 지금 있는 지점에서 아래로 이백오십칠센티가량만큼 내려와바로 처리해줘 그리고 그럼 지금 있는 곳에서 비행을 마쳐한번 해줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.9}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -2.57, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 1.9}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": -2.507, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.9
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -2.57,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 1.9
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": -2.507,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 565,
+          "input": "이번에는 지금 있는 지점에서 위로 사점구미터가량만큼 떠올라좀 해줘",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 4.9, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.9}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 4.9,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.9
+              }
+            }
+          ]
+        },
+        {
+          "index": 567,
+          "input": "지금 바로 지상에서 출발해서 3미터가량 높이에 도달해 하고 나서 바로 현재 고도에 이백구십팔센티가량를더해줘 하고 나서 이번에는 우측 회전으로 기체의 방향을 46도 변경해",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 2.98, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -46.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 3.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 2.98, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -46.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 2.98,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -46.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 3.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 2.98,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -46.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 574,
+          "input": "이번엔 지상에서출발해서 4.2미터가량 높이에 도달해지금 해줘 이어서 그럼 바로 오른쪽으로 선회하면서 22도만큼 방향을 바꿔 이어서 우선 기체를 수직으로 들어 올려 2.1미터 정도의 거리만큼 높여 이어서 지금 머물고 있는 곳에서 착지해부탁드릴게",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.2}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": -22.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 2.1, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 4.2}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 2.1, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.2
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": -22.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 2.1,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 4.2
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 2.1,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        },
+        {
+          "index": 579,
+          "input": "그럼 바라보는 방햔을 등지고 이백오센티가량만큼 이동해",
+          "expected": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": -2.05, \"dy\": 0.0, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 0.0, \"dz\": 2.05, \"d_yaw\": 0.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": -2.05,
+                "dy": 0.0,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 0.0,
+                "dz": 2.05,
+                "d_yaw": 0.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 586,
+          "input": "이번엔 지면에서 벗어나 이미터 남짓 높이에 자리 잡아",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 2.0}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 5.0}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 2.0
+              }
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 5.0
+              }
+            }
+          ]
+        },
+        {
+          "index": 593,
+          "input": "그럼 삼미터가량 높이를 목표로 이륙 절차를 진행해잘 부탁해 그리고 바로 기체의 왼쪽 방향으로 거리를 이백칠십일센티 남짓만큼 이동해 그리고 오케이, 비행을 마무리하고 땅에 내려와바로 처리해줘",
+          "expected": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.0}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 2.71, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "prediction": "<tool_call>{\"name\": \"takeoff\", \"arguments\": {\"altitude\": 3.07}}</tool_call>\n<tool_call>{\"name\": \"move\", \"arguments\": {\"dx\": 0.0, \"dy\": 2.71, \"dz\": 0.0, \"d_yaw\": 0.0}}</tool_call>\n<tool_call>{\"name\": \"land\", \"arguments\": {}}</tool_call>",
+          "true_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.0
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 2.71,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ],
+          "predicted_calls": [
+            {
+              "name": "takeoff",
+              "arguments": {
+                "altitude": 3.07
+              }
+            },
+            {
+              "name": "move",
+              "arguments": {
+                "dx": 0.0,
+                "dy": 2.71,
+                "dz": 0.0,
+                "d_yaw": 0.0
+              }
+            },
+            {
+              "name": "land",
+              "arguments": {}
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
