@@ -108,6 +108,14 @@ class FlightController(Node):
         # 미션 대기열 (Queue)
         self.mission_queue = deque()
 
+        # =============================================================
+        # 🧭 과거 위치 히스토리 관리 (스택 자료구조)
+        # =============================================================
+        # 완료된 안착 위치를 (x, y, z, yaw) 튜플 형태로 저장하는 스택 리스트
+        self.waypoint_history = []
+        # 현재 수행 중인 이동이 과거 복귀(goto_history) 이동인지 나타내는 플래그
+        self.is_recovering = False
+
         # 10Hz 주기적 제어 루프 타이머
         self.timer = self.create_timer(0.1, self.timer_callback)
 
@@ -288,6 +296,74 @@ class FlightController(Node):
                 f"목표(NED): X={self.target_x:.2f}m, Y={self.target_y:.2f}m, Z={self.target_z:.2f}m"
             )
 
+        elif func_name == "goto_history":
+            # 🛡️ 안전 가드: 공중에 비행 중일 때만 복귀 명령 허용
+            if self.flight_state not in ["HOVER", "MOVE"]:
+                self.get_logger().warn(
+                    f"⚠️ [명령 거부] 기체가 비행 중이 아닙니다 (현재 상태: {self.flight_state})."
+                )
+                self.mission_queue.clear()
+                return
+
+            recall_type = args.get("recall", "previous")
+            self.get_logger().info(f"🧭 [명령 수신] 과거 위치 복귀 명령 (모드: {recall_type})")
+
+            # 기록된 히스토리가 없는 경우 방어
+            if not self.waypoint_history:
+                self.get_logger().warn("⚠️ [복귀 불가] 기록된 과거 비행 위치가 없습니다.")
+                self.execute_next_mission()
+                return
+
+            if recall_type == "previous":
+                # 스택에 최소 2개 이상의 좌표가 있어야 '직전 지점'으로 복귀 가능
+                # (1개만 있다면 그 자리가 바로 최초 출발지임)
+                if len(self.waypoint_history) <= 1:
+                    self.get_logger().warn(
+                        "⚠️ [복귀 불가] 이미 최초 출발 위치에 있거나 직전 위치가 없습니다."
+                    )
+                    self.execute_next_mission()
+                    return
+
+                # 1. 현재 머물고 있는 최상단 지점 Pop (버림)
+                current_top = self.waypoint_history.pop()
+                self.get_logger().info(
+                    f"🗑️ [스택 Pop] 현재 위치 폐기: X={current_top[0]:.2f}m, Y={current_top[1]:.2f}m"
+                )
+
+                # 2. 이제 최상단에 남은 지점이 바로 '직전 위치'
+                target_point = self.waypoint_history[-1]
+                self.target_x, self.target_y, self.target_z, self.target_yaw = target_point
+                self.is_recovering = True  # 복귀 플래그 설정 (도착 시 재등록 방지)
+                self.arrival_counter = 0
+                self.flight_state = "MOVE"
+
+                yaw_deg = math.degrees(self.target_yaw)
+                self.get_logger().info(
+                    f"🚀 [직전 위치 복귀 시작] 목표: X={self.target_x:.2f}m, Y={self.target_y:.2f}m, "
+                    f"Z={self.target_z:.2f}m, Yaw={yaw_deg:.1f}° (남은 스택: {len(self.waypoint_history)})"
+                )
+
+            elif recall_type == "first":
+                # 스택의 인덱스 0이 최초 출발점(Home)
+                target_point = self.waypoint_history[0]
+                self.target_x, self.target_y, self.target_z, self.target_yaw = target_point
+
+                # 최초 출발지로 완전히 복귀하므로, 스택을 [원점]만 남기고 리셋
+                self.waypoint_history = [target_point]
+                self.is_recovering = True
+                self.arrival_counter = 0
+                self.flight_state = "MOVE"
+
+                yaw_deg = math.degrees(self.target_yaw)
+                self.get_logger().info(
+                    f"🏠 [최초 출발지 복귀 시작] 목표: X={self.target_x:.2f}m, Y={self.target_y:.2f}m, "
+                    f"Z={self.target_z:.2f}m, Yaw={yaw_deg:.1f}° (스택 원점 리셋 완료)"
+                )
+
+            else:
+                self.get_logger().warn(f"⚠️ 알 수 없는 recall 인자입니다: {recall_type}")
+                self.execute_next_mission()
+
         elif func_name == "land":
             # 착륙 시작 시 비행 안전을 위해 대기열 비움
             self.mission_queue.clear()
@@ -381,6 +457,15 @@ class FlightController(Node):
                     )
                     self.flight_state = "HOVER"
                     self.arrival_counter = 0
+
+                    # 🧭 최초 이륙 안착 지점을 히스토리 스택의 원점(first)으로 등록
+                    self.waypoint_history.clear()
+                    self.waypoint_history.append((self.target_x, self.target_y, self.target_z, self.target_yaw))
+                    self.get_logger().info(
+                        f"📌 [히스토리 등록 - 최초 출발지] Waypoint #0 저장: "
+                        f"X={self.target_x:.2f}m, Y={self.target_y:.2f}m, Z={self.target_z:.2f}m (스택 크기: {len(self.waypoint_history)})"
+                    )
+
                     if self.mission_queue:
                         self.get_logger().info("📋 다음 대기 미션 실행...")
                         self.execute_next_mission()
@@ -418,6 +503,21 @@ class FlightController(Node):
                     self.get_logger().info(f"🎯 [이동 완료] 목표 위치 안착 완료! (위치 오차: {dist_error:.2f}m, 잔류 속도: {speed:.2f}m/s)")
                     self.flight_state = "HOVER"
                     self.arrival_counter = 0
+
+                    # 🧭 일반 이동 완료 시에만 히스토리 스택에 저장 (복귀 이동 시에는 핑퐁 방지를 위해 스킵)
+                    if not self.is_recovering:
+                        self.waypoint_history.append((self.target_x, self.target_y, self.target_z, self.target_yaw))
+                        self.get_logger().info(
+                            f"📌 [히스토리 등록] Waypoint #{len(self.waypoint_history)-1} 저장: "
+                            f"X={self.target_x:.2f}m, Y={self.target_y:.2f}m, Z={self.target_z:.2f}m (스택 크기: {len(self.waypoint_history)})"
+                        )
+                    else:
+                        # 복귀 완료 후 플래그 초기화
+                        self.is_recovering = False
+                        self.get_logger().info(
+                            f"📌 [히스토리 복귀 완료] 과거 목표 지점 복귀 완료 (현재 스택 크기: {len(self.waypoint_history)})"
+                        )
+
                     if self.mission_queue:
                         self.get_logger().info("📋 다음 대기 미션 실행...")
                         self.execute_next_mission()
