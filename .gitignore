@@ -8,10 +8,6 @@ __pycache__/
 #. Custom
 /temp/
 
-# LLM Model
-models/Qwen3-0.6B
-models/Qwen3-1.7B
-
 build/
 install/
 log/
