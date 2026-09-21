@@ -23,8 +23,8 @@ def generate_launch_description():
     px4_env_cmd = (
         f"PX4_SYS_AUTOSTART=4010 "
         f"PX4_SIM_MODEL=gz_x500_mono_cam "
-        f"PX4_GZ_MODEL_POSE='1,1,0.1,0,0,0.9' "
-        f"PX4_GZ_WORLD=test_world "
+        f"PX4_GZ_MODEL_POSE='0,0,0.1,0,0,1.57' "
+        f"PX4_GZ_WORLD=default "
         f"{px4_binary}; exec bash"
     )
 
