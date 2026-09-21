@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 import yaml,torch,rclpy,re
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -11,7 +12,19 @@ from llm_drone_control.schema import DEFINE_SCHEMA,SYSTEM_PROMPT
 class LLMService(Node):
     def __init__(self):
         super().__init__("llm_service")
+        # -------------------------------------------------------------
+        # 로그 파일 설정 (~/llm_logs/llm_log_YYYYMMDD_HHMMSS.log)
+        # -------------------------------------------------------------
+        log_dir = Path.cwd() / "llm_logs"
+        log_dir.mkdir(parents=True, exist_ok=True)  # 폴더가 없으면 생성
 
+        current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.log_file_path = log_dir / f"llm_log_{current_time}.log"
+        self.get_logger().info(f"📁 로그 파일 생성 경로: {self.log_file_path}")
+
+        # -------------------------------------------------------------
+        # 모델 및 설정 로드
+        # -------------------------------------------------------------
         config_path=Path(get_package_share_directory("llm_drone_control"))/"config"/"model.yaml"
         with open(config_path,"r",encoding="utf-8") as f:
             config=yaml.safe_load(f) or {}
@@ -107,6 +120,22 @@ class LLMService(Node):
 
         self.get_logger().info(f"질문: {request.prompt}")
         self.get_logger().info(f"답변: {response.response}")
+        # -------------------------------------------------------------
+        # 로그 파일에 추가 저장 (Append Mode)
+        # -------------------------------------------------------------
+        log_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = (
+            f"[{log_timestamp}]\n"
+            f"[질문] {request.prompt}\n"
+            f"[답변] {response.response}\n"
+            f"{'='*60}\n"
+        )
+        try:
+            with open(self.log_file_path, "a", encoding="utf-8") as f:
+                f.write(log_entry)
+        except Exception as e:
+            self.get_logger().error(f"로그 파일 저장 중 오류 발생: {e}")
+
         return response
 
 def main():

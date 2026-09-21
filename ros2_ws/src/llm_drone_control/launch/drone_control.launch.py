@@ -33,6 +33,7 @@ def generate_launch_description():
                 'gnome-terminal --title="[Node 2] Flight Controller" -- '
             ],
         ),
+        
 
         # 3. STT 노드
         Node(
@@ -45,3 +46,5 @@ def generate_launch_description():
             ],
         ),
     ])
+    
+
