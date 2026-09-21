@@ -1,0 +1,7 @@
+# LLM Model
+Qwen3-1.7B/model-00001-of-00002.safetensors
+Qwen3-1.7B/model-00002-of-00002.safetensors
+
+qwen3-1.7B-drone-merged/model.safetensors
+
+qwen3-1.7B-drone-int4-awq/model.safetensors
