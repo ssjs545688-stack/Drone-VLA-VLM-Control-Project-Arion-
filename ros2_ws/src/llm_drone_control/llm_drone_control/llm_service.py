@@ -94,9 +94,12 @@ class LLMService(Node):
             re.DOTALL
         )
 
-        response.response="\n".join(
-            f"<tool_call>{m}</tool_call>" for m in matches
-        )
+        cleaned_tool_calls = []
+        for m in matches:
+            s = re.sub(r'\s+', ' ', m.strip())
+            cleaned_tool_calls.append(f"<tool_call>{s}</tool_call>")
+
+        response.response="\n".join(cleaned_tool_calls) if cleaned_tool_calls else result.strip()
 
         msg=String()
         msg.data=response.response
