@@ -247,38 +247,6 @@ def make_multi(text, calls):
         ]
     }
 
-
-def is_nonzero_move(args, eps=1e-6):
-    return any(abs(float(args.get(k, 0.0))) > eps for k in ("dx", "dy", "dz", "d_yaw"))
-
-
-def clean_move_args(args):
-    return {k: round(float(v), 4) for k, v in args.items()}
-
-
-def merge_move_calls(calls):
-    merged, has_move = [], False
-    move_sum = {"dx": 0.0, "dy": 0.0, "dz": 0.0, "d_yaw": 0.0}
-
-    for tool, args in calls:
-        if tool == "move":
-            has_move = True
-            for key in move_sum:
-                move_sum[key] += args.get(key, 0.0)
-        else:
-            if has_move:
-                if is_nonzero_move(move_sum):
-                    merged.append(("move", clean_move_args(move_sum)))
-                move_sum = {key: 0.0 for key in move_sum}
-                has_move = False
-            merged.append((tool, args))
-
-    if has_move and is_nonzero_move(move_sum):
-        merged.append(("move", clean_move_args(move_sum)))
-
-    return merged
-
-
 def make_refusal(text):
     return {
         "messages": [
@@ -344,29 +312,29 @@ def basic(n, split, start_index=0):
     ]
 
 
-def compound(n, split, start_index=0):
-    out = []
-    patterns = [
-        ["takeoff", "move"], ["takeoff", "move", "land"], ["takeoff", "move", "move"],
-        ["move", "move"], ["move", "move", "land"], ["takeoff", "move", "move", "land"],
+def compound(n,split,start_index=0):
+    out=[]
+    patterns=[
+        ["takeoff","move"],["takeoff","move","land"],["takeoff","move","move"],
+        ["move","move"],["move","move","land"],["takeoff","move","move","land"],
     ]
-    moves = ["forward", "back", "left", "right", "up", "down", "cw", "ccw"]
-    connectors = {"train": TRAIN_CONNECTORS, "val": VAL_CONNECTORS, "test": TEST_CONNECTORS}[split]
+    moves=["forward","back","left","right","up","down","cw","ccw"]
+    connectors={"train":TRAIN_CONNECTORS,"val":VAL_CONNECTORS,"test":TEST_CONNECTORS}[split]
 
     for _ in range(n):
-        chosen = [random.choice(moves) if x == "move" else x for x in random.choice(patterns)]
+        chosen=[random.choice(moves) if x=="move" else x for x in random.choice(patterns)]
 
-        for i in range(1, len(chosen)):
-            while chosen[i] == chosen[i - 1] and chosen[i] in moves:
-                chosen[i] = random.choice(moves)
+        for i in range(1,len(chosen)):
+            while chosen[i]==chosen[i-1] and chosen[i] in moves:
+                chosen[i]=random.choice(moves)
 
-        texts, calls = [], []
+        texts,calls=[],[]
         for action in chosen:
-            text, tool, args = generate_action(split, action)
+            text,tool,args=generate_action(split,action)
             texts.append(text)
-            calls.append((tool, args))
+            calls.append((tool,args))
 
-        out.append(make_multi(random.choice(connectors).join(texts), merge_move_calls(calls)))
+        out.append(make_multi(random.choice(connectors).join(texts),calls))
 
     return out
 
