@@ -1,6 +1,6 @@
 model:
-  path: "~/Drone-VLA-VLM-Control-Project-Arion-/models/Qwen3-0.6B"
-  lora_path: "~/Drone-VLA-VLM-Control-Project-Arion-/models/finetuned_qwen3_drone_lora"
+  path: "~/Drone-VLA-VLM-Control-Project-Arion-/models/Qwen3-1.7B"
+  lora_path: "~/Drone-VLA-VLM-Control-Project-Arion-/models/finetuned_qwen3-1.7B_drone_lora"
   max_new_tokens: 64
   do_sample: false
   torch_dtype: "auto"
