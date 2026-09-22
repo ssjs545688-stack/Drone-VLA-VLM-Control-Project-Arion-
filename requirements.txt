@@ -11,13 +11,17 @@ pydantic
 
 # ------ LLM / 딥러닝 ------
 torch
-transformers
-peft
 trl
 datasets
-
+transformers==5.17.0
+accelerate==1.15.0
+peft==0.20.0
+gptqmodel==7.5.0
+torchao==0.18.0
+triton==3.8.0
+numpy==2.2.6
+scipy==1.15.3
 # ------ 데이터 / 유틸리티 ------
-numpy
 tqdm
 PyYAML                # import yaml
 

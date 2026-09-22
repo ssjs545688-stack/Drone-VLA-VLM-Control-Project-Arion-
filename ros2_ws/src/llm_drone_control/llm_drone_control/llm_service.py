@@ -40,7 +40,7 @@ class LLMService(Node):
         self.model=AutoModelForCausalLM.from_pretrained(
             model_path,
             local_files_only=True,
-            device_map="cpu",
+            device_map="auto",
         )
 
         self.model.eval()
@@ -93,7 +93,7 @@ class LLMService(Node):
             return_dict=True,
         )
 
-        inputs={k:v.to("cpu") for k,v in inputs.items()}
+        inputs={k:v.to(self.model.device) for k,v in inputs.items()}
 
         with torch.inference_mode():
             outputs=self.model.generate(
