@@ -99,7 +99,10 @@ class LLMService(Node):
         )
 
         matches=re.findall(r"<tool_call>\s*(.*?)\s*</tool_call>",result,re.DOTALL)
-        cleaned=[f"<tool_call>{re.sub(r'\\s+',' ',m.strip())}</tool_call>" for m in matches]
+        cleaned=[]
+        for m in matches:
+            m=re.sub(r'\s+',' ',m.strip())
+            cleaned.append(f"<tool_call>{m}</tool_call>")
         response_text="\n".join(cleaned) if cleaned else result.strip()
 
         msg=String()
