@@ -1,0 +1,14 @@
+python3 -m pip install --user \
+torch==2.14.0+cpu \
+--index-url https://download.pytorch.org/whl/cpu
+
+
+python3 -m pip install --user \
+transformers==5.17.0 \
+accelerate==1.15.0 \
+peft==0.20.0 \
+gptqmodel==7.5.0 \
+torchao==0.18.0 \
+triton==3.8.0 \
+numpy==2.2.6 \
+scipy==1.15.3
