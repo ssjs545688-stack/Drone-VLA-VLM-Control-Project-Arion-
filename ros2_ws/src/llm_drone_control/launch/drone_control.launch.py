@@ -33,18 +33,6 @@ def generate_launch_description():
                 'gnome-terminal --title="[Node 2] Flight Controller" -- '
             ],
         ),
-        
-
-        # 3. STT 노드
-        Node(
-            package='llm_drone_control',
-            executable='stt_node',
-            name='stt_node',
-            output='screen',
-            prefix=[
-                'gnome-terminal --title="[Node 3] STT Node" -- '
-            ],
-        ),
     ])
     
 
