@@ -21,8 +21,8 @@ TEST_DATASET_PATH="./dataset/test.jsonl"
 
 MODEL_ID="../models/Qwen3-1.7B"
 LORA_DIR="../models/finetuned_qwen3-1.7B_drone_lora"
-MERGED_DIR="../models/finetuned_qwen3-1.7B_drone_merged"
-QUANTIZED_DIR="../models/qwen3-1.7B-drone-int4-awq"
+MERGED_DIR="../models/qwen3-1.7B-drone-merged"
+QUANTIZED_DIR="../models/Qwen3-1.7B-AWQ-INT4"
 
 RESULT_PATH="../models/evaluation_results.json"
 
