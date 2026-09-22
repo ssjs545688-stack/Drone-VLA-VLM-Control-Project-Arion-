@@ -90,13 +90,18 @@ PX4 ROS 2 토픽 -> PX4 SITL -> Gazebo
 - llm_drone_control패키지 통합런치 
 - 함수 스키마 수정
 
+### [2026.09.21] 
+- 스마트폰을 이용한 음성입력과 텍스트입력 기능추가(smartphone_birdge)
+- Qwen3-1.7B 모델 파인튜닝 및 양자화
+
 ## ✨ 주요 기능
 
 - Qwen3-1.7B 기반 로컬 자연어 명령 해석
 - LoRA 파인튜닝 모델을 이용한 드론 명령 스키마 응답
 - `takeoff`, `land` Tool Call 기반 PX4 Offboard 제어
 - ROS 2 서비스 `/llm` 및 응답 토픽 `/llm_response` 사용
-- `stt_node`를 통한 마이크 음성 입력 및 Whisper 기반 STT
+- `stt_node`를 통한 PC 마이크 음성 입력 및 Whisper 기반 STT
+- `smartphone_bridge`를 통한 스마트폰 음성 명령 및 텍스트 명령 기능
 - LLM 요청과 응답을 `llm_logs/` 디렉터리에 파일로 저장
 - PX4 NED 좌표계 기반 고도 제어
 - PX4 상태, 위치, 착륙 상태를 이용한 비행 상태 관리
@@ -197,7 +202,9 @@ python3 -m pip install --user \
         "pyyaml" \
         "SpeechRecognition" \
         "openai-whisper" \
-        "PyAudio"
+        "PyAudio" \
+        "fastapi" \
+        "uvicorn"
 ```
 
 ### 2. ROS 2 workspace 빌드
