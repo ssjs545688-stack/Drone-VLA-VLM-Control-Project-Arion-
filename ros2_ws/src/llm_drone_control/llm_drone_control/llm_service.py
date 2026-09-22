@@ -1,6 +1,7 @@
+```python
 from pathlib import Path
 from datetime import datetime
-import yaml,torch,rclpy,re
+import time,yaml,torch,rclpy,re
 from rclpy.node import Node
 from std_msgs.msg import String
 from transformers import AutoTokenizer,AutoModelForCausalLM
@@ -73,12 +74,9 @@ class LLMService(Node):
             return
 
         self.get_logger().info(f"📱 스마트폰 음성 명령 수신: {prompt}")
-        result=self.process_prompt(prompt)
-        self.get_logger().info(f"📤 스마트폰 명령 LLM 처리 완료: {result}")
+        self.process_prompt(prompt)
 
     def process_prompt(self,prompt):
-        self.get_logger().info(f"💬 LLM 입력: {prompt}")
-
         messages=[
             {"role":"system","content":SYSTEM_PROMPT},
             {"role":"user","content":prompt},
@@ -94,6 +92,12 @@ class LLMService(Node):
         )
 
         inputs={k:v.to(self.model.device) for k,v in inputs.items()}
+        input_tokens=inputs["input_ids"].shape[-1]
+
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+
+        start_time=time.perf_counter()
 
         with torch.inference_mode():
             outputs=self.model.generate(
@@ -102,8 +106,17 @@ class LLMService(Node):
                 do_sample=False,
             )
 
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+
+        end_time=time.perf_counter()
+
+        generation_time=end_time-start_time
+        output_tokens=outputs.shape[-1]-input_tokens
+        tokens_per_sec=output_tokens/generation_time if generation_time>0 else 0.0
+
         result=self.tokenizer.decode(
-            outputs[0][inputs["input_ids"].shape[-1]:],
+            outputs[0][input_tokens:],
             skip_special_tokens=True,
         )
 
@@ -124,12 +137,14 @@ class LLMService(Node):
         msg.data=response_text
         self.response_pub.publish(msg)
 
-        self.get_logger().info(f"🤖 답변: {response_text}")
-
         log_entry=(
             f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]\n"
             f"💬 [질문] {prompt}\n"
             f"🤖 [답변] {response_text}\n"
+            f"📊 [입력 토큰] {input_tokens}\n"
+            f"📊 [생성 토큰] {output_tokens}\n"
+            f"📊 [생성 시간] {generation_time:.4f}초\n"
+            f"📊 [생성 속도] {tokens_per_sec:.2f} tokens/s\n"
             f"{'='*60}\n"
         )
 
