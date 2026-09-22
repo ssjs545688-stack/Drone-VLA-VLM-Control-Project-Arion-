@@ -33,6 +33,17 @@ def generate_launch_description():
                 'gnome-terminal --title="[Node 2] Flight Controller" -- '
             ],
         ),
+
+        # 3. 스마트폰 음성명령 처리 노드
+        Node(
+            package='llm_drone_control',
+            executable='smartphone_bridge',
+            name='smartphone_bridge',
+            output='screen',
+            prefix=[
+                'gnome-terminal --title="[Node 3] Voice Command" -- '
+            ],
+        ),
     ])
     
 
