@@ -147,6 +147,13 @@ class LLMService(Node):
             f"{'='*60}\n"
         )
 
+        self.get_logger().info(
+            f"\n"
+            f"💬 [질문] {prompt}\n"
+            f"🤖 [답변] {response_text}\n"
+            f"{'='*60}\n"
+        )
+
         try:
             with open(self.log_file_path,"a",encoding="utf-8") as f:
                 f.write(log_entry)
