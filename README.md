@@ -261,7 +261,7 @@ fastapi \
 uvicorn
 ```
 
-> 기준 ㅡ cpu pc 환경
+> 기준: CPU PC 환경
 
 
 ### 2) ROS 2 workspace 빌드
@@ -275,7 +275,33 @@ source install/setup.bash
 
 > `px4_msgs`와 `guide_interfaces`가 workspace에 포함되어 있는지 확인해야 합니다. PX4와 메시지 버전이 일치하지 않으면 빌드 오류가 발생할 수 있습니다.
 
-### 3) 모델 경로 확인
+### 3) Qwen3-1.7B 모델 다운로드
+
+학습 및 양자화가 완료된 실행 모델은 아래 Google Drive 공유 폴더에서 다운로드할 수 있습니다.
+
+- [Qwen3-1.7B 모델 다운로드 폴더](https://drive.google.com/drive/folders/1eTmmjcQMItts3GHw2YPduNCIt4Xec4LE)
+- 권장 파일: `qwen3-1.7B-drone-int4-awq.zip`
+
+다운로드한 압축 파일을 프로젝트의 `models/` 디렉터리에 압축 해제합니다.
+
+```bash
+cd ~/Drone-VLA-VLM-Control-Project-Arion-
+mkdir -p models
+unzip qwen3-1.7B-drone-int4-awq.zip -d models/
+```
+
+압축 해제 후 아래 파일들이 존재하는지 확인합니다.
+
+```text
+models/qwen3-1.7B-drone-int4-awq/
+├── config.json
+├── tokenizer.json
+└── ...
+```
+
+> Google Drive 접근 권한이 필요할 수 있습니다. 압축 해제 결과가 `models/qwen3-1.7B-drone-int4-awq/qwen3-1.7B-drone-int4-awq/`처럼 중첩되면, `config.json`이 바로 들어 있는 디렉터리를 `model.yaml`의 경로로 지정합니다.
+
+### 4) 모델 경로 확인
 
 실제 모델 경로는 `ros2_ws/src/llm_drone_control/config/model.yaml`에서 설정합니다.
 
