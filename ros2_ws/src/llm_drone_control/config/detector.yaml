@@ -1,0 +1,14 @@
+object_detector:
+  ros__parameters:
+    target_color: 'red'
+    min_area: 400
+    sync_slop: 1.0
+    rgb_topic: '/camera/image_raw'
+    depth_topic: '/camera/depth_image'
+    camera_info_topic: '/camera/camera_info'
+    hsv_h_min: 0
+    hsv_s_min: 100
+    hsv_v_min: 100
+    hsv_h_max: 10
+    hsv_s_max: 255
+    hsv_v_max: 255
