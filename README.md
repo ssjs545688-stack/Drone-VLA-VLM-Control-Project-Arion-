@@ -4,7 +4,7 @@
 
 이 프로젝트는 자연어 명령을 이해하는 로컬 LLM과 PX4 기반 비행 제어를 결합하여, 드론을 자율적으로 제어하는 시스템을 구현하는 연구 프로젝트입니다.
 
-사용자의 자연어 명령은 로컬 Qwen3 모델이 구조화된 Tool Call 형태로 변환되고, ROS 2 노드가 이를 PX4 Offboard 제어 명령으로 실행합니다. 현재 단계는 외부 API 없이 로컬 모델만 사용하여 추론을 수행하는 시뮬레이션 검증 중심의 구현입니다.
+사용자의 자연어 명령은 로컬 Qwen3 모델이 구조화된 Tool Call 형태로 변환하고, 이를 ROS 2 노드가 PX4 Offboard 제어 명령으로 실행합니다. 현재 단계는 외부 API 없이 로컬 모델만 사용하여 추론을 수행하는 시뮬레이션 검증 중심의 구현입니다.
 
 ### 핵심 목표
 
@@ -77,6 +77,8 @@ Drone-VLA-VLM-Control-Project-Arion-
 ├── README.md
 ├── requirements.txt
 └── reference_src/              # 참고 구현 소스
+└── world/                      # 가제보 월드 파일
+│   └── red_target.sdf
 ```
 
 ### 현재 구현된 핵심 패키지
@@ -85,13 +87,16 @@ Drone-VLA-VLM-Control-Project-Arion-
 ros2_ws/src/llm_drone_control/
 ├── config/
 │   └── model.yaml
+│   └── camera.yaml
 ├── launch/
 │   └── drone_control.launch.py
+│   └── vision.launch.py
 ├── llm_drone_control/
 │   ├── flight_controller.py
 │   ├── llm_service.py
 │   ├── schema.py
 │   └── smartphone_bridge.py
+│   └── object_detector.py
 ├── package.xml
 ├── setup.py
 ├── setup.cfg
@@ -99,6 +104,8 @@ ros2_ws/src/llm_drone_control/
 ```
 
 > 현재 코드베이스 기준으로 실제 동작 노드는 `llm_service`, `flight_controller`, `smartphone_bridge` 세 가지이며, `drone_dashboard.py`는 현재 저장소에 포함되어 있지 않습니다.
+
+> `object_detector.py`는 기능은 구현하였으나 llm과 연결은 하지 못하였습니다.
 
 ---
 
@@ -233,15 +240,25 @@ ros2_ws/src/llm_drone_control/
 
 ```bash
 python3 -m pip install --user \
-  "numpy==1.24.4" \
-  "scipy==1.10.1" \
-  "torch" \
-  "transformers" \
-  "accelerate>=0.34.2" \
-  "pyyaml" \
-  "fastapi" \
-  "uvicorn"
+torch==2.14.0+cpu \
+--index-url https://download.pytorch.org/whl/cpu
+
+python3 -m pip install --user \
+transformers==5.17.0 \
+accelerate==1.15.0 \
+peft==0.20.0 \
+gptqmodel==7.5.0 \
+torchao==0.18.0 \
+triton==3.8.0 \
+numpy==2.2.6 \
+scipy==1.15.3
+pyyaml \
+fastapi \
+uvicorn
 ```
+
+> 기준 ㅡ cpu pc 환경
+
 
 ### 2) ROS 2 workspace 빌드
 
