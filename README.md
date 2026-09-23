@@ -123,9 +123,9 @@ ros2_ws/src/llm_drone_control/
 ### 역할 분리
 
 - **LLM 계층:** 자연어 명령을 Tool Call 형태로 변환
-- **ROS 2 계층:** `/llm` 서비스, `/llm_response` 토픽, `/voice_command` 입력 처리
-- **비행 제어 계층:** `flight_controller.py`가 Tool Call을 검증하고 PX4 Offboard 모드로 전환
-- **PX4 계층:** `VehicleCommand`, `OffboardControlMode`, `TrajectorySetpoint` 발행
+- **ROS 2 계층:** `/llm` 서비스, `/llm_response` 토픽, `/voice_command`를 통해 노드 간 명령 전달
+- **비행 제어 계층:** `flight_controller.py`가 Tool Call을 파싱·검증하고 비행 상태를 관리하며 PX4 제어 메시지를 발행
+- **PX4 계층:** ROS 2에서 전달된 제어 명령을 수신하여 Offboard 비행 제어 수행
 
 ---
 
@@ -177,11 +177,15 @@ ros2_ws/src/llm_drone_control/
    <tool_call>{...}</tool_call>
          │
          v
-   flight_controller.py
-   └─ Tool Call 검증, 상태머신 처리, PX4 Offboard 제어
+   ROS 2 flight_controller.py
+   └─ Tool Call 파싱·검증, 비행 상태 관리, PX4 제어 메시지 발행
          │
          v
-   PX4 Autopilot / SITL / Gazebo
+   PX4 Autopilot / SITL
+   └─ ROS 2 제어 메시지 수신 및 Offboard 비행 제어
+         │
+         v
+   Gazebo 시뮬레이터 또는 실제 기체
 ```
 
 ### 주요 모듈
@@ -190,7 +194,7 @@ ros2_ws/src/llm_drone_control/
 |---|---|
 | `schema.py` | Tool 스키마와 시스템 프롬프트 정의 |
 | `llm_service.py` | 로컬 모델 추론, Tool Call 추출, 응답 발행 |
-| `flight_controller.py` | Tool Call 검증, 상태 전이, PX4 메시지 전송 |
+| `flight_controller.py` | Tool Call 파싱·검증, 비행 상태 전이, PX4 제어 메시지 생성 및 전송 |
 | `smartphone_bridge.py` | FastAPI 웹 서버와 ROS 2 토픽 연결 |
 | `launch/drone_control.launch.py` | 통합 런치 구성 파일 |
 | `config/model.yaml` | 로컬 모델 경로 및 추론 옵션 설정 |
@@ -352,8 +356,9 @@ ros2 topic echo /fmu/out/vehicle_local_position
 1. 사용자가 `/llm` 서비스 또는 `/voice_command` 토픽으로 명령을 전달합니다.
 2. `llm_service.py`가 로컬 Qwen3 INT4 AWQ 모델을 사용해 응답을 생성합니다.
 3. 응답 문자열에서 `<tool_call>...</tool_call>` 형태의 JSON을 추출합니다.
-4. `flight_controller.py`가 Tool 이름과 인자를 검증합니다.
-5. PX4의 `OffboardControlMode`, `TrajectorySetpoint`, `VehicleCommand`를 발행합니다.
+4. `flight_controller.py`가 Tool 이름과 인자를 검증하고 비행 상태를 관리합니다.
+5. `flight_controller.py`가 `OffboardControlMode`, `TrajectorySetpoint`, `VehicleCommand`를 `/fmu/in/...` 토픽으로 발행합니다.
+6. PX4가 해당 제어 메시지를 수신하여 Offboard 비행 제어를 수행합니다.
 
 ### 지원 Tool
 
