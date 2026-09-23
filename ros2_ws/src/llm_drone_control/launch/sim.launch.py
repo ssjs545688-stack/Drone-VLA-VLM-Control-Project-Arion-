@@ -22,9 +22,9 @@ def generate_launch_description():
     px4_binary = os.path.join(home_dir, 'PX4-Autopilot/build/px4_sitl_default/bin/px4')
     px4_env_cmd = (
         f"PX4_SYS_AUTOSTART=4010 "
-        f"PX4_SIM_MODEL=gz_x500_mono_cam "
+        f"PX4_SIM_MODEL=gz_x500_depth "
         f"PX4_GZ_MODEL_POSE='0,0,0.1,0,0,1.57' "
-        f"PX4_GZ_WORLD=default "
+        f"PX4_GZ_WORLD=red_target "
         f"{px4_binary}; exec bash"
     )
 
