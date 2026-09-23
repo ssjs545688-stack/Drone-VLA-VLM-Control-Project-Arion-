@@ -27,3 +27,9 @@ PyYAML                # import yaml
 
 # ------ ROS 2 빌드 도구 (colcon 환경 밖에서 설치할 경우) ------
 setuptools
+
+# Vision
+pip3 install opencv-python==4.10.0.84
+sudo apt install gz-harmonic
+sudo apt install ros-humble-ros-gzharmonic
+sudo apt install ros-humble-ros-gzharmonic-bridge
