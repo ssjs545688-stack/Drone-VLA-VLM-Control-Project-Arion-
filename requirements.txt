@@ -28,6 +28,10 @@ PyYAML                # import yaml
 # ------ ROS 2 빌드 도구 (colcon 환경 밖에서 설치할 경우) ------
 setuptools
 
+# 심볼릭 링크 생성
+ln -s ~/Drone-VLA-VLM-Control-Project-Arion-/world/red_target.sdf \
+~/PX4-Autopilot/Tools/simulation/gz/worlds/red_target.sdf
+
 # Vision
 pip3 install opencv-python==4.10.0.84
 sudo apt install gz-harmonic
