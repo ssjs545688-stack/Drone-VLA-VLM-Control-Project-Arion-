@@ -512,7 +512,7 @@ INT4 AWQ Quantized Model  ← 현재 런타임 사용 모델
 
 ---
 ### 12.6 실행 영상
-- [실행 영상 경로]((https://drive.google.com/drive/folders/1eTmmjcQMItts3GHw2YPduNCIt4Xec4LE))
+- [실행 영상 경로]((https://drive.google.com/drive/folders/1eTmmjcQMItts3GHw2YPduNCIt4Xec4LE)
 ---
 
 ## 13. 참고 문서
