@@ -327,6 +327,8 @@ models/qwen3-1.7B-drone-int4-awq/    # 로컬 추론 모델
 
 ### 9.1 시뮬레이션 PC 실행
 
+시뮬레이션 구성 요소를 개별 터미널에서 실행하려면 다음 명령을 사용합니다.
+
 ```bash
 # MicroXRCE-DDS Agent 실행
 MicroXRCEAgent udp4 -p 8888
@@ -340,9 +342,34 @@ PX4_GZ_WORLD=default \
 build/px4_sitl_default/bin/px4
 ```
 
-### 9.2 ROS 2 런치 실행
+### 9.2 sim.launch.py로 시뮬레이션 실행
 
-현재 저장소에서 실제로 사용되는 런치 파일은 `drone_control.launch.py` 입니다.
+`sim.launch.py`는 QGroundControl, MicroXRCE-DDS Agent, PX4 SITL 및 Gazebo를 별도 터미널 창에서 실행합니다. 사용 전에 다음 경로와 프로그램을 준비해야 합니다.
+
+- PX4 저장소 및 빌드 결과: `~/PX4-Autopilot/build/px4_sitl_default/bin/px4`
+- QGroundControl AppImage: `~/QGroundControl-x86_64.AppImage`
+- `gnome-terminal`, `MicroXRCEAgent` 실행 환경
+- ROS 2 workspace 빌드 완료
+
+```bash
+cd ros2_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch llm_drone_control sim.launch.py
+```
+
+런치는 QGroundControl을 바로 실행하고, 약 5초 후 MicroXRCE-DDS Agent, 약 10초 후 PX4 SITL을 실행합니다. PX4에는 다음 설정이 적용됩니다.
+
+- `PX4_SYS_AUTOSTART=4001`
+- `PX4_SIM_MODEL=gz_x500_depth`
+- `PX4_GZ_MODEL_POSE=0,0,0.1,0,0,1.57`
+- `PX4_GZ_WORLD=default`
+
+> 이 런치는 시뮬레이션 구성 요소만 실행하며 `llm_service`, `flight_controller`, `smartphone_bridge`는 시작하지 않습니다. 드론 제어 노드는 아래 `drone_control.launch.py`를 별도 ROS 2 터미널에서 실행하세요. 경로 또는 실행 프로그램이 기본값과 다르면 `sim.launch.py`의 경로 설정을 환경에 맞게 수정해야 합니다.
+
+### 9.3 ROS 2 제어 노드 런치 실행
+
+`drone_control.launch.py`는 LLM 추론, PX4 비행 제어, 스마트폰 브리지 노드를 실행합니다.
 
 ```bash
 cd ros2_ws && source /opt/ros/humble/setup.bash && source install/setup.bash
@@ -355,16 +382,14 @@ ros2 launch llm_drone_control drone_control.launch.py
 - `flight_controller`
 - `smartphone_bridge`
 
-### 9.3 브리지만 단독 실행
+### 9.4 브리지만 단독 실행
 
 ```bash
 cd ros2_ws && source /opt/ros/humble/setup.bash && source install/setup.bash
 ros2 run llm_drone_control smartphone_bridge
 ```
 
-> 현재 구조상 핵심 실행 경로는 `drone_control.launch.py`이며, 별도 `sim.launch.py`는 이 프로젝트 코드베이스에 실제 구현되어 있지 않습니다.
-
-### 9.4 명령 요청 및 상태 확인
+### 9.5 명령 요청 및 상태 확인
 
 ```bash
 # 서비스 직접 호출
